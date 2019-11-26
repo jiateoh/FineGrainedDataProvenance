@@ -22,7 +22,7 @@ class LiteralTransformer extends Transformer {
     case Lit.Int(literal) => {
       if(in_func) {
         var x = Term.Name(param.head.toString().stripPrefix("(").stripSuffix(")"))
-        return q"new SymInt($literal, $x)"
+        return q"new SymInt($literal, $x.getProvenance())"
       }
       q"literal"
     }
