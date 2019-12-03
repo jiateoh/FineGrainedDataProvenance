@@ -22,10 +22,10 @@ object WordCount {
 
     // Measuring Storage overhead
     println(count.map(a => a._2.getProvenanceSize()).reduce(_+_) + " Bytes")
+    //count.map(a => a._2.getProvenanceSize()).reduce(_+_) +
     println(count.head)
 
     // Getting Provenance here
     Utils.retrieveProvenance(count.head._2.getProvenance())
   }
-
 }
