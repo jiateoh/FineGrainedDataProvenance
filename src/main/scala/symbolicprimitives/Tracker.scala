@@ -7,7 +7,7 @@ import scala.reflect.ClassTag
 /**
   * Created by malig on 12/3/19.
   */
-class AnyTracker[T:ClassTag](payload: T , rr: RoaringBitmap) extends Serializable {
+class Tracker[T:ClassTag](payload: T, rr: RoaringBitmap) extends Serializable {
 
 
   def value: T = return payload
@@ -17,20 +17,20 @@ class AnyTracker[T:ClassTag](payload: T , rr: RoaringBitmap) extends Serializabl
 
   override def equals(obj: scala.Any): Boolean = {
     obj match {
-      case str: AnyTracker[T] => this.equals(str)
+      case str: Tracker[T] => this.equals(str)
       case _ =>  value.equals(obj)
     }
   }
-   def equals(obj: AnyTracker[T]): Boolean = {
+   def equals(obj: Tracker[T]): Boolean = {
      this.payload.equals(obj.value)
    }
 
 
-    override def toString: String = s""" ${payload.toString} --> ${rr.toString} """
+    override def toString: String = s""" ${payload.toString} --> ${rr.toString} Size: ${rr.getSizeInBytes} Bytes """
 }
 
 
-object AnyTracker{
+object Tracker{
 
 //  def track[T:ClassTag, U:ClassTag](f: T => U): AnyTracker[T] => _ = {
 //    println("Using normal wrapper")
