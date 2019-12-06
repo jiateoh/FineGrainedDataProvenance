@@ -14,7 +14,7 @@ class WrappedRDD[T: ClassTag](rdd: RDD[Tracker[T]]) extends Serializable {
     return rdd
   }
   def map[U: ClassTag](f: T => U): WrappedRDD[U] = {
-    return new WrappedRDD(rdd.map(s => new Tracker(f(s.value), s.bitmap)))
+    return new WrappedRDD(rdd.map(s => new Tracker[U](f(s.value), s.bitmap)))
   }
 
   def flatMap[U: ClassTag](f: T => TraversableOnce[U]): WrappedRDD[U] = {
@@ -40,20 +40,20 @@ object WrappedRDD {
       implicit kt: ClassTag[K],
       vt: ClassTag[V],
       ord: Ordering[K] = null): WrappedPairRDD[K, V] = {
-    val pair_rdd = new PairRDDFunctions[Tracker[K], Tracker[V]](
+    val pair_rdd = new PairRDDFunctions[K, Tracker[V]](
       rdd
         .getUnWrappedRDD()
         .map(s =>
-          (new Tracker(s.value._1, s.bitmap),
+          (s.value._1,
            new Tracker(s.value._2, s.bitmap))))
     return new WrappedPairRDD(pair_rdd)
   }
 
   implicit def TrackerK_TrackerV_ToTrackerKV[K, V](
-      rdd: RDD[(Tracker[K], Tracker[V])]): RDD[Tracker[(K, V)]] = {
+      rdd: RDD[(K, Tracker[V])]): RDD[Tracker[(K, V)]] = {
     return rdd.map(s => {
-      s._1.bitmap.or(s._2.bitmap)
-      new Tracker((s._1.value, s._2.value), s._1.bitmap)
+     // s._1.bitmap.or(s._2.bitmap)
+      new Tracker((s._1, s._2.value), s._2.bitmap)
     })
   }
 
