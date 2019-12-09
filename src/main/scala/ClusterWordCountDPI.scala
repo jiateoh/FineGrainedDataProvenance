@@ -18,13 +18,17 @@ object ClusterWordCountDPI {
     val count = input.flatMap(s => s.split(' '))
                 .map(s => (s,1))
                 .reduceByKey(_ + _)//.filter(s => s._1.getValue().contains("ali"))
-                .collect()
+                //.collect()
+                //.take(100)
+                .count()
+    println(count)
+    
     
     
     // Measuring Storage overhead
-    println(count.map(a => a.bitmap.getSizeInBytes).sum+ " Bytes")
+    //println(count.map(a => a.bitmap.getSizeInBytes).sum+ " Bytes")
     //    println(count.head)
-    count.take(5).foreach(println)
+    //count.foreach(println)
   
     // Getting Provenance here
   }

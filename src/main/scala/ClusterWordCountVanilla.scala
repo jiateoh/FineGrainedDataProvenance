@@ -16,10 +16,12 @@ object ClusterWordCountVanilla {
     val count = input.flatMap(s => s.split(' '))
                 .map(s => (s,1))
                 .reduceByKey(_ + _)//.filter(s => s._1.getValue().contains("ali"))
-                .collect() // intentional choice: collect information to put it on par with other
-    // classes
+                //.collect() // intentional choice: collect information to be consistent
+                //.take(100)
+                .count()
+    println(count)
     
-    count.take(5).foreach(println)
+    //count.foreach(println)
     
   }
 }
