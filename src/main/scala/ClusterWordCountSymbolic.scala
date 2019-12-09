@@ -15,7 +15,7 @@ object ClusterWordCountSymbolic {
     
     val input = sc.textFile(args.headOption.getOrElse("file.log"))
 
-    val input_new = Utils.setInputZip(input.zipWithIndex()) // << Rewrites inserted
+    val input_new = Utils.setInputZip(input.zipWithUniqueId()) // << Rewrites inserted
       .map(s => new SymString(s._1, s._2)) // << Rewrites Inserted
 
     // s x s

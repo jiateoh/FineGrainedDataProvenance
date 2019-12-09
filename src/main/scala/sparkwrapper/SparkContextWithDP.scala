@@ -11,7 +11,7 @@ class SparkContextWithDP(sc: SparkContext) {
   def textFile(filepath: String): WrappedRDD[String] = {
     val rdd = sc.textFile(filepath)
     val tracked_rdd = Utils
-      .setInputZip(rdd.zipWithIndex())
+      .setInputZip(rdd.zipWithUniqueId())
       .map { s =>
         val rr = new RoaringBitmap
         if (s._2 > Int.MaxValue)
