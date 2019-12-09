@@ -1,8 +1,7 @@
 package sparkwrapper
 
 
-import org.apache.spark.rdd.{PairRDDFunctions, RDD}
-import org.apache.spark.util.Utils
+import org.apache.spark.rdd.RDD
 import symbolicprimitives.Tracker
 
 import scala.reflect.ClassTag
@@ -48,13 +47,14 @@ object WrappedRDD {
       implicit kt: ClassTag[K],
       vt: ClassTag[V],
       ord: Ordering[K] = null): WrappedPairRDD[K, V] = {
-    val pair_rdd = new PairRDDFunctions[K, Tracker[V]](
+    new WrappedPairRDD(
       rdd
         .getUnWrappedRDD()
         .map(s =>
           (s.value._1,
-           new Tracker(s.value._2, s.bitmap))))
-    return new WrappedPairRDD(pair_rdd)
+           new Tracker(s.value._2, s.bitmap)))
+      )
+    
   }
 
   implicit def TrackerK_TrackerV_ToTrackerKV[K, V](
