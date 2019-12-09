@@ -2,7 +2,9 @@ package sparkwrapper
 
 
 import org.apache.spark.rdd.{PairRDDFunctions, RDD}
+import org.apache.spark.util.Utils
 import symbolicprimitives.Tracker
+
 import scala.reflect.ClassTag
 
 /**
@@ -29,9 +31,15 @@ class WrappedRDD[T: ClassTag](rdd: RDD[Tracker[T]]) extends Serializable {
   def collect(): Array[Tracker[T]] = {
     return rdd.collect()
   }
+  
   def count():Long= {
     return rdd.count()
   }
+  
+  def take(num: Int): Array[Tracker[T]] = {
+    rdd.take(num)
+  }
+  
 }
 
 object WrappedRDD {
