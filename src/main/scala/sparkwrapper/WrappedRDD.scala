@@ -39,6 +39,24 @@ class WrappedRDD[T: ClassTag](rdd: RDD[Tracker[T]]) extends Serializable {
     rdd.take(num)
   }
   
+  /**
+   * Return a new RDD containing the distinct elements in this RDD.
+   */
+  def distinct(numPartitions: Int)(implicit ord: Ordering[T] = null): WrappedRDD[T] = {
+    map(x => (x, null)).reduceByKey((x, y) => x, numPartitions).map(_._1)
+  }
+  
+  /**
+   * Return a new RDD containing the distinct elements in this RDD.
+   */
+  def distinct(): WrappedRDD[T] = {
+    distinct(rdd.partitions.length)
+  }
+  
+  def cache(): this.type = {
+    rdd.cache()
+    this
+  }
 }
 
 object WrappedRDD {
@@ -57,6 +75,10 @@ object WrappedRDD {
     
   }
 
+  // TODO: jteoh observation, this can be dangerously expensive for pair-based operations which
+  //  typically return the base RDD type. We may want to refactor to either consistently use
+  //  Tracker(K,V) or implement a subclass of WrappedRDD that handles pairwise operations without
+  //  excessive conversion.
   implicit def TrackerK_TrackerV_ToTrackerKV[K, V](
       rdd: RDD[(K, Tracker[V])]): RDD[Tracker[(K, V)]] = {
     return rdd.map(s => {
@@ -64,5 +86,22 @@ object WrappedRDD {
       new Tracker((s._1, s._2.value), s._2.bitmap)
     })
   }
-
+  
+  implicit def trackerRDDToWrappedRDD[V: ClassTag](rdd: RDD[Tracker[V]]): WrappedRDD[V] = {
+    new WrappedRDD(rdd)
+  }
+  
+  // Scala doesn't allow for implicit conversions to chain, so we explicitly define one.
+  implicit def trackerPairRDDToWrappedRDD[K,V](
+    rdd: RDD[(K, Tracker[V])]): WrappedRDD[(K, V)] = {
+    trackerRDDToWrappedRDD(TrackerK_TrackerV_ToTrackerKV(rdd))
+  }
+  
+  // Provided so code will compile with just the SparkContext change, but we may want to consider
+  // switching the existing collect() to an alternate API to better mimic Spark's typical collect()
+//  implicit def collectedTrackersToValues[V](
+//      trackers: Array[Tracker[V]]): Array[V] = {
+//    trackers.map(_.value)
+//  }
+  
 }
