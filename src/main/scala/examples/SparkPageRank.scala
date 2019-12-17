@@ -82,7 +82,7 @@ object SparkPageRank {
   
     // Small update to extract only values from Trackers (may need to update our API instead?)
     // val output = ranks.collect()
-    val output = ranks.collect().map(_.value)
+    val output = ranks.collectWithTrackers().map(_.value)
     
     output.foreach(tup => println(tup._1 + " has rank: " + tup._2 + "."))
     

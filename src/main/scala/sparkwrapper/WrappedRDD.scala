@@ -1,62 +1,141 @@
 package sparkwrapper
 
 
+import org.apache.spark.{Partition, TaskContext}
 import org.apache.spark.rdd.RDD
+import org.apache.spark.util.Utils
 import symbolicprimitives.Tracker
 
 import scala.reflect.ClassTag
+import scala.util.Random
 
 /**
   * Created by malig on 12/3/19.
   */
-class WrappedRDD[T: ClassTag](rdd: RDD[Tracker[T]]) extends Serializable {
+class WrappedRDD[T: ClassTag](rdd: RDD[Tracker[T]]) extends RDD[T](rdd.sparkContext, rdd.dependencies) with
+  Serializable {
 
   def getUnWrappedRDD(): RDD[Tracker[T]] = {
     return rdd
   }
-  def map[U: ClassTag](f: T => U): WrappedRDD[U] = {
+  override def map[U: ClassTag](f: T => U): WrappedRDD[U] = {
     return new WrappedRDD(rdd.map(s => new Tracker[U](f(s.value), s.bitmap)))
   }
 
-  def flatMap[U: ClassTag](f: T => TraversableOnce[U]): WrappedRDD[U] = {
+  override def flatMap[U: ClassTag](f: T => TraversableOnce[U]): WrappedRDD[U] = {
     return new WrappedRDD(
       rdd.flatMap(a => f(a.value).map(s => new Tracker(s, a.bitmap))))
   }
 
-  def filter(f: T => Boolean): WrappedRDD[T] = {
+  override def filter(f: T => Boolean): WrappedRDD[T] = {
     return new WrappedRDD(rdd.filter(s => f(s.value)))
   }
 
-  def collect(): Array[Tracker[T]] = {
+  // TODO implement collect()
+  def collectWithTrackers(): Array[Tracker[T]] = {
     return rdd.collect()
   }
   
-  def count():Long= {
+  override def count(): Long= {
     return rdd.count()
   }
   
-  def take(num: Int): Array[Tracker[T]] = {
+  // TODO: implement take()
+  def takeWithTrackers(num: Int): Array[Tracker[T]] = {
     rdd.take(num)
   }
   
   /**
    * Return a new RDD containing the distinct elements in this RDD.
    */
-  def distinct(numPartitions: Int)(implicit ord: Ordering[T] = null): WrappedRDD[T] = {
+  override def distinct(numPartitions: Int)(implicit ord: Ordering[T] = null): WrappedRDD[T] = {
     map(x => (x, null)).reduceByKey((x, y) => x, numPartitions).map(_._1)
   }
   
   /**
    * Return a new RDD containing the distinct elements in this RDD.
    */
-  def distinct(): WrappedRDD[T] = {
+  override def distinct(): WrappedRDD[T] = {
     distinct(rdd.partitions.length)
   }
   
-  def cache(): this.type = {
+  override def cache(): this.type = {
     rdd.cache()
     this
   }
+  
+  override def compute(split: Partition, context: TaskContext): Iterator[T] = {
+    throw new NotImplementedError("WrappedRDD's should never be directly computed.")
+  }
+  
+  def computeWithTracker(split: Partition, context: TaskContext): Iterator[Tracker[T]] = {
+    rdd.compute(split, context)
+  }
+  
+  override protected def getPartitions: Array[Partition] = rdd.partitions
+  
+  def takeSampleWithTracker(
+                               withReplacement: Boolean,
+                               num: Int,
+                               // should technically  use Spark's Utils.random
+                               seed: Long = new Random().nextLong): Array[Tracker[T]] = {
+    rdd.takeSample(withReplacement, num, seed)
+  }
+  
+  override def takeSample(
+                             withReplacement: Boolean,
+                             num: Int,
+                             // should technically  use Spark's Utils.random
+                             seed: Long = new Random().nextLong): Array[T] = {
+    takeSampleWithTracker(withReplacement, num, seed).map(_.value)
+  }
+  
+  
+  override def zip[U: ClassTag](other: RDD[U]): WrappedRDD[(T, U)] = {
+    val result: RDD[Tracker[(T, U)]] = rdd.zip(other).map({
+      case (tracker, otherValue) =>
+        new Tracker((tracker.value, otherValue), tracker.bitmap)
+      }
+    )
+    return new WrappedRDD(result)
+  }
+  
+  // Assumption: the zip rdd is generated from the same rdd, so we only need one set of trackers
+//  def zipPartitions[B: ClassTag, V: ClassTag]
+//  (rdd2: RDD[B], preservesPartitioning: Boolean)
+//  (f: (Iterator[T], Iterator[B]) => Iterator[V]): RDD[V] =
+//    {
+//      rdd.zipPartitions(rdd2)((trackerIter, zipIter) => {
+//        val resultIter: Iterator[V] = f(trackerIter.map(_.value), zipIter)
+//        trackerIter.map(_.bitmap).zip()
+//        trackerIter.zip(zipIter).map(
+//          (tracker, other) =>
+//          )
+//      })
+////        (iter1: Iterator[Tracker[T], iter2: Iterator[B]) => iter1.mapf)
+//    }
+  
+//
+//    withScope {
+//    new ZippedPartitionsRDD2(sc, sc.clean(f), this, rdd2, preservesPartitioning)
+//  }
+//
+//  withScope {
+//      zipPartitions(other, preservesPartitioning = false) { (thisIter, otherIter) =>
+//        new Iterator[(T, U)] {
+//          def hasNext: Boolean = (thisIter.hasNext, otherIter.hasNext) match {
+//            case (true, true) => true
+//            case (false, false) => false
+//            case _ => throw new SparkException("Can only zip RDDs with " +
+//                                                 "same number of elements in each partition")
+//          }
+//          def next(): (T, U) = (thisIter.next(), otherIter.next())
+//        }
+//      }
+//    }
+//  }
+//
+  
 }
 
 object WrappedRDD {

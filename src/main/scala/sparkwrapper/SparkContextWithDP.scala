@@ -1,15 +1,16 @@
 package sparkwrapper
 
-import org.apache.spark.SparkContext
+import org.apache.spark.{SparkConf, SparkContext}
 import org.roaringbitmap.RoaringBitmap
 import symbolicprimitives.{Tracker, Utils}
 
 /**
   * Created by malig on 12/3/19.
   */
-class SparkContextWithDP(sc: SparkContext) {
-  def textFile(filepath: String): WrappedRDD[String] = {
-    val rdd = sc.textFile(filepath)
+class SparkContextWithDP(val sc: SparkContext) {
+  def textFile(filepath: String,
+               minPartitions: Int = sc.defaultMinPartitions): WrappedRDD[String] = {
+    val rdd = sc.textFile(filepath, minPartitions)
     val tracked_rdd = Utils
       .setInputZip(rdd.zipWithUniqueId())
       .map { s =>
@@ -22,5 +23,10 @@ class SparkContextWithDP(sc: SparkContext) {
       }
     return new WrappedRDD[String](tracked_rdd)
   }
-
+  
+  def stop(): Unit = {
+    sc.stop()
+  }
+  
+  implicit def dpToSC(dp: SparkContextWithDP): SparkContext = dp.sc
 }

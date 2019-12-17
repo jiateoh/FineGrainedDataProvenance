@@ -19,7 +19,7 @@ object  WCDPI {
     val count = input
       .flatMap(s => s.split(' ')).map(s => (s,1))
       .reduceByKey(_ + _)
-     .collect()
+     .collectWithTrackers()
 
    // count.foreach(println)
       //

@@ -11,6 +11,8 @@ libraryDependencies += "org.scalameta" %% "scalameta" % "4.2.3"
 // https://mvnrepository.com/artifact/org.apache.spark/spark-core
 libraryDependencies += "org.apache.spark" %% "spark-core" % "2.2.0"
 
+libraryDependencies += "org.apache.spark" %% "spark-mllib" % "2.2.0"
+
 libraryDependencies += "org.apache.spark" %% "spark-sql" % "2.2.3"
 
 libraryDependencies += "org.roaringbitmap" % "RoaringBitmap" % "0.8.11"
