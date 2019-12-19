@@ -8,6 +8,7 @@ import org.roaringbitmap.RoaringBitmap
 import sparkwrapper.WrappedRDD._
 import symbolicprimitives.Tracker
 
+import scala.collection.{Map, mutable}
 import scala.reflect.ClassTag
 
 /**
@@ -177,6 +178,18 @@ class WrappedPairRDD[K, V](val rdd: RDD[(K, Tracker[V])])(
 
                                                                                  )
     new WrappedPairRDD(result)
+  }
+  
+  def collectAsMapWithTrackers(): Map[K, Tracker[V]] = {
+    val data = rdd.collect()
+    val map = new mutable.HashMap[K, Tracker[V]]
+    map.sizeHint(data.length)
+    data.foreach { pair => map.put(pair._1, pair._2) }
+    map
+  }
+  
+  def collectAsMap(): Map[K, V] = {
+    collectAsMapWithTrackers().mapValues(_.value)
   }
   
   implicit class RDDWithDataSource(rdd: RDD[_]) {

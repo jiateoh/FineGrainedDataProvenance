@@ -1,6 +1,7 @@
 package sparkwrapper
 
 import org.apache.spark.SparkContext
+import org.apache.spark.rdd.RDD
 import org.roaringbitmap.RoaringBitmap
 import symbolicprimitives.{Tracker, Utils}
 

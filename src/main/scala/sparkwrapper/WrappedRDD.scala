@@ -2,9 +2,11 @@ package sparkwrapper
 
 
 import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
 import symbolicprimitives.Tracker
 
 import scala.reflect.ClassTag
+import scala.util.Random
 
 /**
   * Created by malig on 12/3/19.
@@ -53,9 +55,38 @@ class WrappedRDD[T: ClassTag](rdd: RDD[Tracker[T]]) extends Serializable {
     distinct(rdd.partitions.length)
   }
   
+  def persist(newLevel: StorageLevel): this.type = {
+    rdd.persist(newLevel)
+    this
+  }
+  
+  def persist(): this.type = {
+    rdd.persist()
+    this
+  }
+  
+  def unpersist(blocking: Boolean = true): this.type = {
+    rdd.unpersist(blocking)
+    this
+  }
+  
   def cache(): this.type = {
     rdd.cache()
     this
+  }
+  
+  def takeSampleWithTracker(withReplacement: Boolean,
+                            num: Int,
+                            // should preferably use Spark's Utils.random
+                            seed: Long = new Random().nextLong): Array[Tracker[T]] = {
+    rdd.takeSample(withReplacement, num, seed)
+  }
+  
+  def takeSample(withReplacement: Boolean,
+                 num: Int,
+                 // should technically  use Spark's Utils.random
+                 seed: Long = new Random().nextLong): Array[T] = {
+    takeSampleWithTracker(withReplacement, num, seed).map(_.value)
   }
 }
 
@@ -96,12 +127,5 @@ object WrappedRDD {
     rdd: RDD[(K, Tracker[V])]): WrappedRDD[(K, V)] = {
     trackerRDDToWrappedRDD(TrackerK_TrackerV_ToTrackerKV(rdd))
   }
-  
-  // Provided so code will compile with just the SparkContext change, but we may want to consider
-  // switching the existing collect() to an alternate API to better mimic Spark's typical collect()
-//  implicit def collectedTrackersToValues[V](
-//      trackers: Array[Tracker[V]]): Array[V] = {
-//    trackers.map(_.value)
-//  }
   
 }
