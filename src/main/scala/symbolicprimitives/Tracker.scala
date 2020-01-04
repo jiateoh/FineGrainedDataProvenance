@@ -8,7 +8,7 @@ import scala.reflect.ClassTag
   * Created by malig on 12/3/19.
   */
 
-class Tracker[T:ClassTag](payload: T, rr: RoaringBitmap) extends Serializable {
+class Tracker[T:ClassTag](var payload: T, var rr: RoaringBitmap) extends Serializable {
 
 
   def value: T = return payload

@@ -18,8 +18,9 @@
 // scalastyle:off println
 package examples
 
+import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
-import sparkwrapper.SparkContextWithDP
+import sparkwrapper.{SparkConfWithDP, SparkContextWithDP}
 
 /**
  * Computes the PageRank of URLs from an input file. Input file should
@@ -38,7 +39,7 @@ import sparkwrapper.SparkContextWithDP
  * bin/run-example SparkPageRank data/mllib/pagerank_data.txt 10
  * }}}
  */
-object SparkPageRank {
+object SparkPageRankWithProvenance {
   
   def showWarning() {
     System.err.println(
@@ -55,15 +56,22 @@ object SparkPageRank {
     }
     
     showWarning()
+  
+    println("Args:")
+    args.foreach(println)
     
+    val conf = new SparkConfWithDP()
     val spark = SparkSession
-                .builder
-                .appName("SparkPageRank")
+                .builder.config(conf)
+                //.appName("SparkPageRankWithProvenance")
                 .getOrCreate()
+    
     // jteoh: change to test with UDF-Unaware API
     val sc = new SparkContextWithDP(spark.sparkContext)
     
     val iters = if (args.length > 1) args(1).toInt else 10
+    
+    val file = args.lift(0).getOrElse("/Users/jteoh/Code/FineGrainedDataProvenance/part-00000")
     // val lines = spark.read.textFile(args(0)).rdd
     val lines = sc.textFile(args(0))
     val links = lines.map{ s =>
@@ -73,19 +81,29 @@ object SparkPageRank {
     var ranks = links.mapValues(v => 1.0).setName("Ranks @ iteration 0")
     
     for (i <- 1 to iters) {
+      val oldRanks = ranks
       val contribs = links.join(ranks).values.flatMap{ case (urls, rank) =>
         val size = urls.size
         urls.map(url => (url, rank / size))
       }
-      ranks = contribs.reduceByKey(_ + _).mapValues(0.15 + 0.85 * _).setName(s"Ranks @ iteration " +
-                                                                               s"${i}")
+  
+      // count to make sure it gets computed...
+      // jt: cache requires some force computation.
+//      val temp = contribs.getUnWrappedRDD().distinct()
+//      println("TESTING DISTINCT ONLY: " + temp.count())
+      ranks = contribs.reduceByKey(_ + _)//.mapValues(0.15 + 0.85 * _).setName(s"Ranks @
+      // iteration " + s"${i}")//.cache()
+      println("TESTING new-ranks ONLY: " + ranks.count())
+      // TODO: also test underlying reduceByKey?? or using a different bitmap impl?
+//      ranks.count()
+//      oldRanks.unpersist(blocking = false)
     }
   
     // Small update to extract only values from Trackers (may need to update our API instead?)
     // val output = ranks.collect()
     val output = ranks.collect().map(_.value)
     
-    output.foreach(tup => println(tup._1 + " has rank: " + tup._2 + "."))
+    //output.foreach(tup => println(tup._1 + " has rank: " + tup._2 + "."))
     
     spark.stop()
   }

@@ -88,6 +88,11 @@ class WrappedRDD[T: ClassTag](rdd: RDD[Tracker[T]]) extends Serializable {
                  seed: Long = new Random().nextLong): Array[T] = {
     takeSampleWithTracker(withReplacement, num, seed).map(_.value)
   }
+  
+  def setName(name: String): this.type = {
+    rdd.setName(name)
+    this
+  }
 }
 
 object WrappedRDD {

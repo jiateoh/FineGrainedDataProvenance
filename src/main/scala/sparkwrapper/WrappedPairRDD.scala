@@ -37,16 +37,6 @@ class WrappedPairRDD[K, V](val rdd: RDD[(K, Tracker[V])])(
   
   
   /*** START NEW IMPLEMENTATION ***/
-  /** Updates combiner's bitmap in place and returns the updated instance */
-  def updateCombinerBitmap(combiner: TrackerCombiner[_], rr2: RoaringBitmap): RoaringBitmap = {
-    // TODO: apply rank function here
-    combiner.bitmap.or(rr2)
-    combiner.bitmap
-  }
-  
-  private class TrackerCombiner[C](var value: C, var bitmap: RoaringBitmap)
-                                  extends Serializable {
-  }
   
   // TODO: implement other PairRDD functions on top of combineByKeyWithClassTag
   /**
@@ -60,30 +50,35 @@ class WrappedPairRDD[K, V](val rdd: RDD[(K, Tracker[V])])(
                          partitioner: Partitioner = defaultPartitioner(rdd),
                          mapSideCombine: Boolean = true,
                          serializer: Serializer = null)(implicit ct: ClassTag[C]): WrappedRDD[(K, C)] = {
-    
-    
+  
+    /** Updates combiner's bitmap in place and returns the updated instance */
+    def updateCombinerBitmap(combiner: Tracker[_], rr2: RoaringBitmap): Unit = {
+      // TODO: apply rank function here
+      combiner.bitmap.or(rr2)
+      // second bitmap can be pre-emptively cleared to ease memory pressure since this is
+      // combineByKey.
+      rr2.clear()
+    }
+  
     new WrappedRDD[(K, C)](
-      rdd.combineByKeyWithClassTag[TrackerCombiner[C]](
+      rdd.combineByKeyWithClassTag[Tracker[C]](
         // init: create a new 'tracker' instance that we can reuse for all values in the key.
         (tracker: Tracker[V]) =>
-            new TrackerCombiner(createCombiner(tracker.value), tracker.bitmap.clone()),
-        (combiner: TrackerCombiner[C], next: Tracker[V]) => {
-          combiner.value = mergeValue(combiner.value, next.value)
+            new Tracker(createCombiner(tracker.value), tracker.bitmap.clone()),
+        (combiner: Tracker[C], next: Tracker[V]) => {
+          combiner.payload = mergeValue(combiner.value, next.value)
           updateCombinerBitmap(combiner, next.bitmap)
           combiner
         },
-        (combiner1: TrackerCombiner[C], combiner2: TrackerCombiner[C]) => {
-          combiner1.value = mergeCombiners(combiner1.value, combiner2.value)
+        (combiner1: Tracker[C], combiner2: Tracker[C]) => {
+          combiner1.payload = mergeCombiners(combiner1.value, combiner2.value)
           updateCombinerBitmap(combiner1, combiner2.bitmap)
           combiner1
         },
         partitioner,
         mapSideCombine,
         serializer
-      ).mapValues(
-        // finally, convert back to Tracker class.
-        combiner => new Tracker(combiner.value, combiner.bitmap))
-    )
+      ))
   }
 
   // START: Additional Spark-supported reduceByKey APIs
@@ -175,6 +170,7 @@ class WrappedPairRDD[K, V](val rdd: RDD[(K, Tracker[V])])(
            otherTracker.bitmap
            )
          )
+      // warning: can't clear these two bitmaps as they may be reused!
 
                                                                                  )
     new WrappedPairRDD(result)
@@ -190,6 +186,11 @@ class WrappedPairRDD[K, V](val rdd: RDD[(K, Tracker[V])])(
   
   def collectAsMap(): Map[K, V] = {
     collectAsMapWithTrackers().mapValues(_.value)
+  }
+  
+  def setName(name: String): this.type = {
+    rdd.setName(name)
+    this
   }
   
   implicit class RDDWithDataSource(rdd: RDD[_]) {
