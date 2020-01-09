@@ -6,7 +6,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.serializer.Serializer
 import org.roaringbitmap.RoaringBitmap
 import sparkwrapper.WrappedRDD._
-import symbolicprimitives.Tracker
+import trackers.{BaseTracker, RoaringBitmapTracker}
 
 import scala.collection.{Map, mutable}
 import scala.reflect.ClassTag
@@ -14,31 +14,13 @@ import scala.reflect.ClassTag
 /**
   * Created by malig on 12/3/19.
   */
-class WrappedPairRDD[K, V](val rdd: RDD[(K, Tracker[V])])(
+class WrappedPairRDD[K, V](val rdd: RDD[(K, BaseTracker[V])])(
     implicit kt: ClassTag[K],
     vt: ClassTag[V],
     ord: Ordering[K] = null)
     extends Serializable {
   
-  /*** START OLD IMPLEMENTATION ***/
-  // Unused/safe implementation
-  def rankBitmapsOriginal(rr1: RoaringBitmap, rr2: RoaringBitmap): RoaringBitmap = {
-    RoaringBitmap.or(rr1, rr2)
- //   rr1
-  }
-  
-  def reduceByKeyOriginal(func: (V, V) => V): WrappedRDD[(K, V)] =
-    return new WrappedRDD[(K, V)](rdd.reduceByKey { (v1, v2) =>
-      val value = func(v1.value, v2.value)
-      new Tracker(value, rankBitmapsOriginal(v1.bitmap, v2.bitmap))
-    })
-  
-  /*** END OLD IMPLEMENTATION ***/
-  
-  
-  /*** START NEW IMPLEMENTATION ***/
-  
-  // TODO: implement other PairRDD functions on top of combineByKeyWithClassTag
+
   /**
    * Optimized combineByKey implementation where provenance tracking data structures are
    * constructed only once per partition+key.
@@ -50,38 +32,25 @@ class WrappedPairRDD[K, V](val rdd: RDD[(K, Tracker[V])])(
                          partitioner: Partitioner = defaultPartitioner(rdd),
                          mapSideCombine: Boolean = true,
                          serializer: Serializer = null)(implicit ct: ClassTag[C]): WrappedRDD[(K, C)] = {
-  
-    /** Updates combiner's bitmap in place and returns the updated instance */
-    def updateCombinerBitmap(combiner: Tracker[_], rr2: RoaringBitmap): Unit = {
-      // TODO: apply rank function here
-      combiner.bitmap.or(rr2)
-      // second bitmap can be pre-emptively cleared to ease memory pressure since this is
-      // combineByKey.
-      rr2.clear()
-    }
-  
+    
     new WrappedRDD[(K, C)](
-      rdd.combineByKeyWithClassTag[Tracker[C]](
+      rdd.combineByKeyWithClassTag[BaseTracker[C]](
         // init: create a new 'tracker' instance that we can reuse for all values in the key.
-        (tracker: Tracker[V]) =>
-            new Tracker(createCombiner(tracker.value), tracker.bitmap.clone()),
-        (combiner: Tracker[C], next: Tracker[V]) => {
-          combiner.payload = mergeValue(combiner.value, next.value)
-          updateCombinerBitmap(combiner, next.bitmap)
-          combiner
+        (tracker: BaseTracker[V]) => tracker.cloneWithValue(createCombiner(tracker.value)),
+        (combiner: BaseTracker[C], next: BaseTracker[V]) => {
+          combiner.value = mergeValue(combiner.value, next.value)
+          combiner.mergeTrackerProvenance(next)
         },
-        (combiner1: Tracker[C], combiner2: Tracker[C]) => {
-          combiner1.payload = mergeCombiners(combiner1.value, combiner2.value)
-          updateCombinerBitmap(combiner1, combiner2.bitmap)
-          combiner1
+        (combiner1: BaseTracker[C], combiner2: BaseTracker[C]) => {
+          combiner1.value = mergeCombiners(combiner1.value, combiner2.value)
+          combiner1.mergeTrackerProvenance(combiner2)
         },
         partitioner,
         mapSideCombine,
         serializer
-      ))
+        ))
   }
-
-  // START: Additional Spark-supported reduceByKey APIs
+  
   def reduceByKey(func: (V, V) => V): WrappedRDD[(K, V)] = {
     combineByKeyWithClassTag(identity, func, func)
   }
@@ -133,16 +102,14 @@ class WrappedPairRDD[K, V](val rdd: RDD[(K, Tracker[V])])(
   
   def mapValues[U: ClassTag](f: V => U): WrappedRDD[(K, U)] = {
     new WrappedRDD[(K,U)](
-      rdd.mapValues(
-        v => new Tracker(f(v.value), v.bitmap)
-      )
+      rdd.mapValues(v => v.withValue(f(v.value)))
     )
   }
   
   def flatMapValues[U: ClassTag](f: V => TraversableOnce[U]): WrappedRDD[(K, U)] = {
     new WrappedRDD[(K,U)](
       rdd.flatMapValues(
-        v => f(v.value).map(new Tracker(_, v.bitmap))
+        v => f(v.value).map(v.withValue)
       )
     )
   }
@@ -159,26 +126,20 @@ class WrappedPairRDD[K, V](val rdd: RDD[(K, Tracker[V])])(
     assert(rdd.firstSource == other.rdd.firstSource,
            "Provenance-based join is only supported for RDDs originating from the same input data" +
              " (e.g. self-join): " + s"${rdd.firstSource} vs. ${other.rdd.firstSource}")
-    val result: RDD[(K, Tracker[(V, W)])] = rdd.cogroup(other.rdd).flatMapValues(pair =>
+    val result: RDD[(K, BaseTracker[(V, W)])] = rdd.cogroup(other.rdd).flatMapValues(pair =>
      for (thisTracker <- pair._1.iterator; otherTracker <- pair._2.iterator)
-       yield new Tracker[(V, W)](
-         // Value tuple
-         (thisTracker.value, otherTracker.value),
-         // TODO: extend this implementation to support case when joining two different datasets.
-         RoaringBitmap.or(
-           thisTracker.bitmap,
-           otherTracker.bitmap
-           )
-         )
-      // warning: can't clear these two bitmaps as they may be reused!
-
-                                                                                 )
+       // create a new tracker and provenance information set. Note that we can't simply reuse
+       // provenance because there may be multiple matching pairs in the join.
+       yield thisTracker.cloneWithValue((thisTracker.value, otherTracker.value))
+                        .mergeTrackerProvenance(otherTracker)
+      
+    )
     new WrappedPairRDD(result)
   }
   
-  def collectAsMapWithTrackers(): Map[K, Tracker[V]] = {
+  def collectAsMapWithTrackers(): Map[K, BaseTracker[V]] = {
     val data = rdd.collect()
-    val map = new mutable.HashMap[K, Tracker[V]]
+    val map = new mutable.HashMap[K, BaseTracker[V]]
     map.sizeHint(data.length)
     data.foreach { pair => map.put(pair._1, pair._2) }
     map

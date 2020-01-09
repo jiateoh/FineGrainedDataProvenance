@@ -6,6 +6,7 @@ import scala.reflect.ClassTag
 
 /**
   * Created by malig on 12/3/19.
+  * Original tracker, retained for history.
   */
 
 class Tracker[T:ClassTag](var payload: T, var rr: RoaringBitmap) extends Serializable {

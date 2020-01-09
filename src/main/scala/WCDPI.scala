@@ -6,6 +6,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 import org.roaringbitmap.RoaringBitmap
 import sparkwrapper.SparkContextWithDP
 import symbolicprimitives.Utils
+import trackers.RoaringBitmapTracker
 
 
 
@@ -26,7 +27,7 @@ object  WCDPI {
       //.reduceByKey(_ + _)//.filter(s => s._1.getValue().contains("ali"))
       //.collect()
     println(count.head)
-    Utils.retrieveProvenance(count.head.bitmap)
+    Utils.retrieveProvenance(count.head.asInstanceOf[RoaringBitmapTracker[(String, Int)]].rr)
 //    count.foreach(println)
     // Measuring Storage overhead
 //    println(count.map(a => a.bitmap.getSizeInBytes).reduce(_+_) + " Bytes")

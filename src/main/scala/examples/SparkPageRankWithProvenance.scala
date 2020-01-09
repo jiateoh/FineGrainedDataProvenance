@@ -20,7 +20,8 @@ package examples
 
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
-import sparkwrapper.{SparkConfWithDP, SparkContextWithDP}
+import sparkwrapper.{SparkConfWithDP, SparkContextWithDP, WrappedRDD}
+import trackers.Trackers
 
 /**
  * Computes the PageRank of URLs from an input file. Input file should
@@ -69,15 +70,30 @@ object SparkPageRankWithProvenance {
     // jteoh: change to test with UDF-Unaware API
     val sc = new SparkContextWithDP(spark.sparkContext)
     
-    val iters = if (args.length > 1) args(1).toInt else 10
+    val iters = args.lift(1).map(_.toInt).getOrElse(10)
+    // if third argument is provided, use it to set the current tracker
+    args.lift(2).foreach(Trackers.setTrackerCreator)
+    
     
     val file = args.lift(0).getOrElse("/Users/jteoh/Code/FineGrainedDataProvenance/part-00000")
     // val lines = spark.read.textFile(args(0)).rdd
-    val lines = sc.textFile(args(0))
+    val lines = sc.textFile(file)
     val links = lines.map{ s =>
       val parts = s.split("\\s+")
       (parts(0), parts(1))
     }.distinct().groupByKey().cache()
+  
+//    val temp = links.count()
+//    val temp2 = links.collect().head // only safe because count is 1...
+//    println("-" * 50)
+//    println("Link count and provenance count and provenance size est")
+//    println(temp)
+//    println(temp2)
+//    println(temp2.provenanceCount)
+//    println(temp2.provenanceSizeEst)
+//    println("-" * 50)//debugLinkCounts(links)
+    
+    //debugOutCounts(links)
     var ranks = links.mapValues(v => 1.0).setName("Ranks @ iteration 0")
     
     for (i <- 1 to iters) {
@@ -87,13 +103,24 @@ object SparkPageRankWithProvenance {
         urls.map(url => (url, rank / size))
       }
   
+      println("-" * 50)
+      println("TEST COUNTS WOOOH: " + contribs.count())
+      println("-" * 50)// TODO: something is going on between these two steps to increase memory.
       // count to make sure it gets computed...
       // jt: cache requires some force computation.
 //      val temp = contribs.getUnWrappedRDD().distinct()
 //      println("TESTING DISTINCT ONLY: " + temp.count())
-      ranks = contribs.reduceByKey(_ + _)//.mapValues(0.15 + 0.85 * _).setName(s"Ranks @
+      ranks = contribs.reduceByKey({case (d1, d2) =>
+        throw new Exception("BOOM")
+        d1 / 0
+      })
+      //ranks = contribs.reduceByKey(_ + _)//.mapValues(0.15 + 0.85 * _).setName(s"Ranks @
       // iteration " + s"${i}")//.cache()
-      println("TESTING new-ranks ONLY: " + ranks.count())
+        Trackers.printDebug("Rank counts: " + ranks.count(), t => "Unable to compute rank " +
+          s"counts: $t")
+          
+        Trackers.printDebug("Tracker creation count: " + Trackers.count, t => "Unable to " +
+            s"retrieve tracker counts: $t")
       // TODO: also test underlying reduceByKey?? or using a different bitmap impl?
 //      ranks.count()
 //      oldRanks.unpersist(blocking = false)
@@ -106,6 +133,28 @@ object SparkPageRankWithProvenance {
     //output.foreach(tup => println(tup._1 + " has rank: " + tup._2 + "."))
     
     spark.stop()
+  }
+  
+  private def debugLinkCounts(links: WrappedRDD[(String, Iterable[String])]) = {
+    println("-" * 50)
+    println("Debugging: countByKey for in edges")
+    println("-" * 50)
+    links.getUnWrappedRDD
+         .map(_.value) // remove trackers
+         .map(p => (p._1, p._2.size)) // get number of outgoing edges
+         .reduceByKey(_ + _) // sum over outgoing neighbors
+         .saveAsTextFile("/tmp/linkCounts")
+  }
+  
+  private def debugOutCounts(links: WrappedRDD[(String, Iterable[String])]) = {
+    println("-" * 50)
+    println("Debugging: countByKey for outgoing edges")
+    println("-" * 50)
+    links.getUnWrappedRDD
+         .map(_.value) // remove trackers
+         .flatMap(_._2.map(out => (out, 1))) // get outgoing edges only
+         .reduceByKey(_ + _) // sum over outgoing neighbors
+         .saveAsTextFile("/tmp/outCounts")
   }
 }
 // scalastyle:on println
