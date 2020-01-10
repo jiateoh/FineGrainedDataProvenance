@@ -1,6 +1,7 @@
 package trackers
 
 import org.roaringbitmap.RoaringBitmap
+import provenance.{DummyProvenance, RoaringBitmapProvenance}
 
 import scala.collection.mutable
 import scala.reflect.ClassTag
@@ -67,14 +68,15 @@ trait TrackerCreator {
 
 object RoaringBitMapTrackerCreator extends TrackerCreator {
   def createTracker[T](value: T, id: Long)
-                                   (implicit ct: ClassTag[T]): RoaringBitmapTracker[T]  = {
+                                   (implicit ct: ClassTag[T]): BaseTracker[T]  = {
     val rr = new RoaringBitmap
     if (id > Int.MaxValue)
     // jteoh: Roaring64NavigableBitmap should be an option if this is required.
       throw new UnsupportedOperationException(
         "The offset is greater than Int.Max which is not supported yet")
     rr.add(id.asInstanceOf[Int])
-    new RoaringBitmapTracker(value, rr)
+    //new RoaringBitmapTracker(value, rr)
+    new ProvenanceTracker(value, new RoaringBitmapProvenance(rr))
   }
 }
 
@@ -106,6 +108,7 @@ object TestingTrackerCreator extends TrackerCreator {
 
 object DummyTrackerCreator extends TrackerCreator {
   override def createTracker[T](value: T, id: Long)
-                               (implicit ct: ClassTag[T]): DummyTracker[T] =
-    new DummyTracker[T](value)
+                               (implicit ct: ClassTag[T]): BaseTracker[T] =
+    //new DummyTracker[T](value)
+    new ProvenanceTracker(value, new DummyProvenance())
 }

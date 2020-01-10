@@ -20,6 +20,7 @@ package examples
 
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.util.SizeEstimator
 import sparkwrapper.{SparkConfWithDP, SparkContextWithDP, WrappedRDD}
 import trackers.Trackers
 
@@ -103,9 +104,7 @@ object SparkPageRankWithProvenance {
         urls.map(url => (url, rank / size))
       }
   
-      println("-" * 50)
-      println("TEST COUNTS WOOOH: " + contribs.count())
-      println("-" * 50)// TODO: something is going on between these two steps to increase memory.
+
       // count to make sure it gets computed...
       // jt: cache requires some force computation.
 //      val temp = contribs.getUnWrappedRDD().distinct()
@@ -116,6 +115,11 @@ object SparkPageRankWithProvenance {
       })
       //ranks = contribs.reduceByKey(_ + _)//.mapValues(0.15 + 0.85 * _).setName(s"Ranks @
       // iteration " + s"${i}")//.cache()
+      Trackers.printDebug("Contribs count: " + contribs.count(), "Unable to compute contribs " +
+        "count")
+      Trackers.printDebug("Contribs Size estimate: " + contribs.getUnWrappedRDD.map(SizeEstimator
+                                                                              .estimate).sum(), "Unable to" +
+        " estimate RDD size")
         Trackers.printDebug("Rank counts: " + ranks.count(), t => "Unable to compute rank " +
           s"counts: $t")
           
