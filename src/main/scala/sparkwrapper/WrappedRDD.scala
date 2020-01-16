@@ -11,9 +11,8 @@ import scala.util.Random
 /**
   * Created by malig on 12/3/19.
   */
-class WrappedRDD[T: ClassTag](rdd: RDD[BaseTracker[T]]) extends Serializable {
-
-  def getUnWrappedRDD: RDD[BaseTracker[T]] = rdd
+class WrappedRDD[T: ClassTag](val rdd: RDD[BaseTracker[T]]) extends Serializable {
+  
   def map[U: ClassTag](f: T => U): WrappedRDD[U] = {
     new WrappedRDD(rdd.map(s => s.withValue(f(s.value))))
   }
@@ -88,13 +87,12 @@ class WrappedRDD[T: ClassTag](rdd: RDD[BaseTracker[T]]) extends Serializable {
 
 object WrappedRDD {
 
-  implicit def rddToPairRDDFunctions[K, V](rdd: WrappedRDD[(K, V)])(
+  implicit def rddToPairRDDFunctions[K, V](wrapped: WrappedRDD[(K, V)])(
       implicit kt: ClassTag[K],
       vt: ClassTag[V],
       ord: Ordering[K] = null): WrappedPairRDD[K, V] = {
     new WrappedPairRDD(
-      rdd
-        .getUnWrappedRDD
+      wrapped.rdd
         .map(s =>
           (s.value._1,
             s.withValue(s.value._2)))

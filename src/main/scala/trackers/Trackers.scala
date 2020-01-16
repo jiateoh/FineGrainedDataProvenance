@@ -17,8 +17,10 @@ object Trackers {
   
   
   def createTracker[T](value: T, id: Long)
-                      (implicit ct: ClassTag[T]): BaseTracker[T] =
+                      (implicit ct: ClassTag[T]): BaseTracker[T] = {
+      count += 1 // disable this to differentiate between RDD initialization and map/filter/etc
       trackerCreator.createTracker(value, id)(ct)
+  }
   
   def setTrackerCreator(trackerCreator: TrackerCreator): Unit = {
     println("-" * 40)
@@ -31,10 +33,14 @@ object Trackers {
     trackerCreatorStr.toLowerCase() match {
       case "bitmap" | "roaring" | "roaringbitmap" | "rr" =>
         setTrackerCreator(RoaringBitMapTrackerCreator)
+      case "bitmapprov" =>
+        setTrackerCreator(RoaringBitMapProvenanceTrackerCreator)
       case "set" | "naive" =>
         setTrackerCreator(SetTrackerCreator)
       case "dummy" =>
         setTrackerCreator(DummyTrackerCreator)
+      case "dummyprov" =>
+        setTrackerCreator(DummyProvenanceTrackerCreator)
       case "test" | "testing" =>
         setTrackerCreator(TestingTrackerCreator)
       case _ =>
@@ -75,6 +81,19 @@ object RoaringBitMapTrackerCreator extends TrackerCreator {
       throw new UnsupportedOperationException(
         "The offset is greater than Int.Max which is not supported yet")
     rr.add(id.asInstanceOf[Int])
+    new RoaringBitmapTracker(value, rr)
+  }
+}
+
+object RoaringBitMapProvenanceTrackerCreator extends TrackerCreator {
+  def createTracker[T](value: T, id: Long)
+                      (implicit ct: ClassTag[T]): BaseTracker[T]  = {
+    val rr = new RoaringBitmap
+    if (id > Int.MaxValue)
+    // jteoh: Roaring64NavigableBitmap should be an option if this is required.
+      throw new UnsupportedOperationException(
+        "The offset is greater than Int.Max which is not supported yet")
+    rr.add(id.asInstanceOf[Int])
     //new RoaringBitmapTracker(value, rr)
     new ProvenanceTracker(value, new RoaringBitmapProvenance(rr))
   }
@@ -109,6 +128,12 @@ object TestingTrackerCreator extends TrackerCreator {
 object DummyTrackerCreator extends TrackerCreator {
   override def createTracker[T](value: T, id: Long)
                                (implicit ct: ClassTag[T]): BaseTracker[T] =
-    //new DummyTracker[T](value)
+    new DummyTracker[T](value)
+}
+
+object DummyProvenanceTrackerCreator extends TrackerCreator {
+  override def createTracker[T](value: T, id: Long)
+                               (implicit ct: ClassTag[T]): BaseTracker[T] =
+  //new DummyTracker[T](value)
     new ProvenanceTracker(value, new DummyProvenance())
 }

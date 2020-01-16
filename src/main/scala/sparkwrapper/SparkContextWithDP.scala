@@ -1,8 +1,10 @@
 package sparkwrapper
 
-import org.apache.spark.SparkContext
+import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
 import org.roaringbitmap.RoaringBitmap
+import provenance.Provenance
+import provenance.rdd.{FlatProvenanceRDD, ProvenanceRDD}
 import symbolicprimitives.Utils
 import trackers.{BaseTracker, RoaringBitmapTracker, Trackers}
 
@@ -10,6 +12,14 @@ import trackers.{BaseTracker, RoaringBitmapTracker, Trackers}
   * Created by malig on 12/3/19.
   */
 class SparkContextWithDP(sc: SparkContext) {
+  /** TODO setting provenance type doesn't seem to work in a configurable manner yet */
+//  private val conf: SparkConf = sc.getConf
+//  conf.set("Hello world", "foobar")
+//  Provenance.printDebug(conf.getAll.mkString("\n"), "??")
+//  val provType = conf.get("provenance.type", "bitmap")
+//  Provenance.printDebug(s"Setting provenance type to $provType", "")
+//  Provenance.setProvenance(provType)
+  
   def textFile(filepath: String): WrappedRDD[String] = {
     val rdd = sc.textFile(filepath)
     val tracked_rdd = Utils
@@ -17,5 +27,15 @@ class SparkContextWithDP(sc: SparkContext) {
       .map({case (value, id) => Trackers.createTracker(value, id)})
     new WrappedRDD[String](tracked_rdd)
   }
-
+  
+  def textFileProv(filepath: String): ProvenanceRDD[String] = {
+    val rdd = sc.textFile(filepath)
+    val tracked_rdd = Utils
+      .setInputZip(rdd.zipWithUniqueId())
+      .mapValues(id => Provenance.createProvenance(id))
+    new FlatProvenanceRDD[String](tracked_rdd)
+  }
+  
+  
+  
 }

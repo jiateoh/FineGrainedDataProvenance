@@ -21,6 +21,7 @@ package examples
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.util.SizeEstimator
+import provenance.Provenance
 import sparkwrapper.{SparkConfWithDP, SparkContextWithDP, WrappedRDD}
 import trackers.Trackers
 
@@ -62,7 +63,8 @@ object SparkPageRankWithProvenance {
     println("Args:")
     args.foreach(println)
     
-    val conf = new SparkConfWithDP()
+    val conf = new SparkConfWithDP(withKryo = args.lift(2).exists(_ == "kryo"),
+                                   withTrackers = false)
     val spark = SparkSession
                 .builder.config(conf)
                 //.appName("SparkPageRankWithProvenance")
@@ -72,13 +74,11 @@ object SparkPageRankWithProvenance {
     val sc = new SparkContextWithDP(spark.sparkContext)
     
     val iters = args.lift(1).map(_.toInt).getOrElse(10)
-    // if third argument is provided, use it to set the current tracker
-    args.lift(2).foreach(Trackers.setTrackerCreator)
     
     
     val file = args.lift(0).getOrElse("/Users/jteoh/Code/FineGrainedDataProvenance/part-00000")
     // val lines = spark.read.textFile(args(0)).rdd
-    val lines = sc.textFile(file)
+    val lines = sc.textFileProv(file) // TODO: Formalize this into textFile
     val links = lines.map{ s =>
       val parts = s.split("\\s+")
       (parts(0), parts(1))
@@ -109,30 +109,30 @@ object SparkPageRankWithProvenance {
       // jt: cache requires some force computation.
 //      val temp = contribs.getUnWrappedRDD().distinct()
 //      println("TESTING DISTINCT ONLY: " + temp.count())
-      ranks = contribs.reduceByKey({case (d1, d2) =>
-        throw new Exception("BOOM")
-        d1 / 0
-      })
-      //ranks = contribs.reduceByKey(_ + _)//.mapValues(0.15 + 0.85 * _).setName(s"Ranks @
-      // iteration " + s"${i}")//.cache()
-      Trackers.printDebug("Contribs count: " + contribs.count(), "Unable to compute contribs " +
-        "count")
-      Trackers.printDebug("Contribs Size estimate: " + contribs.getUnWrappedRDD.map(SizeEstimator
-                                                                              .estimate).sum(), "Unable to" +
-        " estimate RDD size")
-        Trackers.printDebug("Rank counts: " + ranks.count(), t => "Unable to compute rank " +
-          s"counts: $t")
-          
-        Trackers.printDebug("Tracker creation count: " + Trackers.count, t => "Unable to " +
-            s"retrieve tracker counts: $t")
-      // TODO: also test underlying reduceByKey?? or using a different bitmap impl?
-//      ranks.count()
-//      oldRanks.unpersist(blocking = false)
+      ranks = contribs.reduceByKey(_ + _).mapValues(0.15 + 0.85 * _)
+                      .setName(s"Ranks @ iteration $i").cache()
+  //      Trackers.printDebug("Contribs count: " + contribs.count(), "Unable to compute contribs " +
+  //        "count")
+  //      Trackers.printDebug("Contribs Size estimate: " + contribs.rdd.map(SizeEstimator
+  //                                                                              .estimate).sum(), "Unable to" +
+  //        " estimate RDD size")
+  //        Trackers.printDebug("Rank counts: " + ranks.count(), t => "Unable to compute rank " +
+  //          s"counts: $t")
+  //
+  //        Trackers.printDebug("Tracker creation count: " + Trackers.count, t => "Unable to " +
+  //            s"retrieve tracker counts: $t")
+  //      Trackers.printDebug("Provenance creation count: " + Provenance.count, t => "Unable to " +
+  //        s"retrieve provenance counts: $t")
+      // count to make sure it gets computed... (cache requires forced computation)
+      ranks.count()
+      oldRanks.unpersist(blocking = false)
     }
   
     // Small update to extract only values from Trackers (may need to update our API instead?)
     // val output = ranks.collect()
-    val output = ranks.collect().map(_.value)
+    // Jason 9/13: This may vary between _.value and _._2 depending on whether we use Tracker or
+    // ProvenanceRow
+    val output = ranks.collect().map(_._2)
     
     //output.foreach(tup => println(tup._1 + " has rank: " + tup._2 + "."))
     
@@ -143,7 +143,7 @@ object SparkPageRankWithProvenance {
     println("-" * 50)
     println("Debugging: countByKey for in edges")
     println("-" * 50)
-    links.getUnWrappedRDD
+    links.rdd
          .map(_.value) // remove trackers
          .map(p => (p._1, p._2.size)) // get number of outgoing edges
          .reduceByKey(_ + _) // sum over outgoing neighbors
@@ -154,7 +154,7 @@ object SparkPageRankWithProvenance {
     println("-" * 50)
     println("Debugging: countByKey for outgoing edges")
     println("-" * 50)
-    links.getUnWrappedRDD
+    links.rdd
          .map(_.value) // remove trackers
          .flatMap(_._2.map(out => (out, 1))) // get outgoing edges only
          .reduceByKey(_ + _) // sum over outgoing neighbors
