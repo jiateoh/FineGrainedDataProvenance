@@ -10,3 +10,8 @@ class DummyProvenance extends Provenance {
   override def estimateSize: Long = 0L
   
 }
+
+
+object DummyProvenance extends ProvenanceFactory {
+  override def create(id: Long): Provenance = new DummyProvenance()
+}
