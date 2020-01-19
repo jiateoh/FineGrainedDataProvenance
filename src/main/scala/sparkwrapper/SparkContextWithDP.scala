@@ -4,7 +4,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
 import org.roaringbitmap.RoaringBitmap
 import provenance.Provenance
-import provenance.rdd.{FlatProvenanceRDD, ProvenanceRDD}
+import provenance.rdd.{FlatProvenanceDefaultRDD, ProvenanceRDD}
 import symbolicprimitives.Utils
 import trackers.{BaseTracker, RoaringBitmapTracker, Trackers}
 
@@ -33,7 +33,7 @@ class SparkContextWithDP(sc: SparkContext) {
     val tracked_rdd = Utils
       .setInputZip(rdd.zipWithUniqueId())
       .mapValues(id => Provenance.createProvenance(id))
-    new FlatProvenanceRDD[String](tracked_rdd)
+    new FlatProvenanceDefaultRDD[String](tracked_rdd)
   }
   
   

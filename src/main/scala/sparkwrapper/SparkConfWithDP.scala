@@ -2,6 +2,7 @@ package sparkwrapper
 
 import org.apache.spark.SparkConf
 import org.roaringbitmap.RoaringBitmap
+import provenance.rdd.ProvenanceGrouping
 import provenance.{DummyProvenance, Provenance, RoaringBitmapProvenance}
 import trackers.{BaseTracker, RoaringBitmapTracker, SetTracker, Trackers}
 
@@ -26,7 +27,13 @@ class SparkConfWithDP(withKryo: Boolean = true, withTrackers: Boolean = false) e
       registerKryoClasses(Array(classOf[RoaringBitmapProvenance], classOf[DummyProvenance],
                                 classOf[RoaringBitmap]))
     }
-    
+    registerKryoClasses(Array(classOf[ProvenanceGrouping[Int]],
+                              classOf[ProvenanceGrouping[Long]],
+                              classOf[ProvenanceGrouping[Short]],
+                              classOf[ProvenanceGrouping[Boolean]],
+                              classOf[ProvenanceGrouping[Double]],
+                              classOf[ProvenanceGrouping[String]])
+      
       
   }
 }

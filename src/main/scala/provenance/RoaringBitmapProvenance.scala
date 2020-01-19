@@ -40,6 +40,19 @@ class RoaringBitmapProvenance(var bitmap: RoaringBitmap) extends Provenance with
     deserializationCount += 1
     bitmap = in.readObject().asInstanceOf[RoaringBitmap]
   }
+  
+  override def toString: String = {
+    val cardinality = this.bitmap.getCardinality
+    var count = 0
+    val iter = this.bitmap.iterator()
+    var buf = new StringBuilder("[")
+    while(count < 20 && iter.hasNext()) {
+      buf ++= iter.next().toString
+      if(iter.hasNext) buf += ','
+    }
+    buf += ']'
+    s"${this.getClass.getSimpleName}: ${buf.toString()}"
+  }
 }
 
 object RoaringBitmapProvenance extends ProvenanceFactory {

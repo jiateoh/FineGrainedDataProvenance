@@ -7,6 +7,9 @@ import scala.reflect.ClassTag
 
 abstract class BaseProvenanceRDD[T: ClassTag](baseRDD: RDD[_]) extends ProvenanceRDD[T] {
   
+  /** Specialized flatMap to detect if a ProvenanceGrouping is used. */
+  // def flatMap[U: ClassTag](f: T => ProvenanceGrouping[U]): FlatProvenanceDefaultRDD[U]
+  
   final def count(): Long = baseRDD.count()
   
   final def distinct(): ProvenanceRDD[T] = this.distinct(baseRDD.getNumPartitions)

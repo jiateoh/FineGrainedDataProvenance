@@ -53,10 +53,10 @@ trait ProvenanceRDD[T] extends Serializable {
 }
 
 object ProvenanceRDD {
-  implicit def toPairRDD[K: ClassTag, V: ClassTag](rdd: ProvenanceRDD[(K,V)]): PairProvenanceRDD[K,V] = {
+  implicit def toPairRDD[K: ClassTag, V: ClassTag](rdd: ProvenanceRDD[(K,V)]): PairProvenanceDefaultRDD[K,V] = {
     rdd match {
-      case pair: PairProvenanceRDD[K, V] => pair
-      case flat: FlatProvenanceRDD[(K, V)] => FlatProvenanceRDD.flatToPair(flat)
+      case pair: PairProvenanceDefaultRDD[K, V] => pair
+      case flat: FlatProvenanceDefaultRDD[(K, V)] => FlatProvenanceDefaultRDD.flatToPair(flat)
       case _ => throw new NotImplementedError("Unknown RDD type for pair conversion: $rdd")
     }
   }

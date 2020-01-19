@@ -22,6 +22,7 @@ import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.util.SizeEstimator
 import provenance.Provenance
+import provenance.rdd.{BaseProvenanceRDD, ProvenanceGrouping}
 import sparkwrapper.{SparkConfWithDP, SparkContextWithDP, WrappedRDD}
 import trackers.Trackers
 
@@ -132,7 +133,10 @@ object SparkPageRankWithProvenance {
     // val output = ranks.collect()
     // Jason 9/13: This may vary between _.value and _._2 depending on whether we use Tracker or
     // ProvenanceRow
-    val output = ranks.collect().map(_._2)
+    Trackers.printDebug(s"First 10 provenance: \n${
+      ranks.takeWithProvenance(10).map(_._2).mkString("\n")}", x => {x.printStackTrace(); x
+      .getMessage})
+    //val output = ranks.collect().map(_._2)
     
     //output.foreach(tup => println(tup._1 + " has rank: " + tup._2 + "."))
     
