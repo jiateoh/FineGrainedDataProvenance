@@ -1,8 +1,7 @@
-package provenance
+package provenance.data
 
 import java.io.{IOException, ObjectInputStream, ObjectOutputStream}
 
-import org.apache.spark.util.SizeEstimator
 import org.roaringbitmap.RoaringBitmap
 
 class RoaringBitmapProvenance(var bitmap: RoaringBitmap) extends Provenance with Serializable {

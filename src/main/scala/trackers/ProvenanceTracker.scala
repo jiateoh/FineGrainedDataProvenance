@@ -1,6 +1,6 @@
 package trackers
 
-import provenance.Provenance
+import provenance.data.Provenance
 
 import scala.reflect.ClassTag
 

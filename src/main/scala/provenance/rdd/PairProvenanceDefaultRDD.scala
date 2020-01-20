@@ -3,7 +3,7 @@ package provenance.rdd
 import org.apache.spark.rdd.RDD
 import org.apache.spark.serializer.Serializer
 import org.apache.spark.{HashPartitioner, Partitioner}
-import provenance.Provenance
+import provenance.data.Provenance
 import sparkwrapper.CompactBuffer
 
 import scala.reflect.ClassTag

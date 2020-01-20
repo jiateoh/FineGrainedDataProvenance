@@ -1,6 +1,4 @@
-package provenance
-
-import org.apache.spark.SparkContext
+package provenance.data
 
 trait Provenance extends Serializable {
   

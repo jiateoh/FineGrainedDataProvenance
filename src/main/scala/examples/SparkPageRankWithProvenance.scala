@@ -21,7 +21,7 @@ package examples
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.util.SizeEstimator
-import provenance.Provenance
+import provenance.data.Provenance
 import provenance.rdd.{BaseProvenanceRDD, ProvenanceGrouping}
 import sparkwrapper.{SparkConfWithDP, SparkContextWithDP, WrappedRDD}
 import trackers.Trackers
@@ -100,6 +100,14 @@ object SparkPageRankWithProvenance {
     
     for (i <- 1 to iters) {
       val oldRanks = ranks
+      // One option:
+      // Grouping-side: have a special flag on provenance indicating this was a gbk. If so,
+      // during the merge phase manage two provenances - one of the original, and one as if the
+      // gbk was just poorly implemented and unnecessary.
+      // advantage: when it comes to this flatMap, we could look at both the current provenance
+      // and the individual items in each group.
+      // alternatively: we could assume gbk will use some sort of operation later and thus
+      // generate a group-level provenance of nothing.
       val contribs = links.join(ranks).values.flatMap{ case (urls, rank) =>
         val size = urls.size
         urls.map(url => (url, rank / size))

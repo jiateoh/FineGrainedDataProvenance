@@ -1,6 +1,6 @@
 package provenance.rdd
 
-import provenance.Provenance
+import provenance.data.Provenance
 
 import scala.collection.generic.CanBuildFrom
 import scala.reflect.ClassTag

@@ -3,7 +3,7 @@ package sparkwrapper
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
 import org.roaringbitmap.RoaringBitmap
-import provenance.Provenance
+import provenance.data.Provenance
 import provenance.rdd.{FlatProvenanceDefaultRDD, ProvenanceRDD}
 import symbolicprimitives.Utils
 import trackers.{BaseTracker, RoaringBitmapTracker, Trackers}

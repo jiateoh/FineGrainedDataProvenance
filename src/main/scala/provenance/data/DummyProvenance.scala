@@ -1,4 +1,4 @@
-package provenance
+package provenance.data
 
 class DummyProvenance extends Provenance {
   override def cloneProvenance(): Provenance = this

@@ -1,7 +1,7 @@
 package provenance.rdd
 
 import org.apache.spark.rdd.RDD
-import provenance.Provenance
+import provenance.data.Provenance
 
 import scala.reflect.ClassTag
 
