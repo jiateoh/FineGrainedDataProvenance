@@ -32,7 +32,7 @@ class SparkConfWithDP(withKryo: Boolean = true, withTrackers: Boolean = false) e
                               classOf[ProvenanceGrouping[Short]],
                               classOf[ProvenanceGrouping[Boolean]],
                               classOf[ProvenanceGrouping[Double]],
-                              classOf[ProvenanceGrouping[String]])
+                              classOf[ProvenanceGrouping[String]]))
       
       
   }

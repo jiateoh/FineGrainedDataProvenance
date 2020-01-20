@@ -3,7 +3,7 @@ package provenance
 class DummyProvenance extends Provenance {
   override def cloneProvenance(): Provenance = this
   
-  override def merge(other: Provenance): this.type = this
+  override def merge(other: Provenance): Provenance = other
   
   override def count: Int = 0
   

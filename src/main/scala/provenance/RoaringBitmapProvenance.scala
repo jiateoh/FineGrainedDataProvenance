@@ -12,6 +12,7 @@ class RoaringBitmapProvenance(var bitmap: RoaringBitmap) extends Provenance with
     other match {
       case rbp: RoaringBitmapProvenance =>
         bitmap.or(rbp.bitmap)
+        // Optional (but potentially unsafe/incorrect?) operation to pre-emptively free memory
         //rbp.bitmap.clear()
       case other => throw new NotImplementedError(s"Unknown provenance type! $other")
     }

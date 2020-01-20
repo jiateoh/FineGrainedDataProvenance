@@ -8,7 +8,7 @@ trait Provenance extends Serializable {
   def cloneProvenance(): Provenance
   
   /** Merges two provenance instances (in place), returning the current instance after merging. */
-  def merge(other: Provenance): this.type 
+  def merge(other: Provenance): Provenance
   
   /** Returns number of provenance IDs. */
   def count: Int
