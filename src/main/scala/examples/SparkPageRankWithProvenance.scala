@@ -75,6 +75,13 @@ object SparkPageRankWithProvenance {
     val sc = new SparkContextWithDP(spark.sparkContext)
     
     val iters = args.lift(1).map(_.toInt).getOrElse(10)
+ 
+    // set provenance if available.
+    val provenanceType = args.lift(3).filter(_.nonEmpty).map({x =>
+      println("Warning: Setting provenance type has no effect on cluster execution right" +
+                " now due to misconfigurations in JVM setup")
+      Provenance.setProvenanceType(x)
+    })
     
     
     val file = args.lift(0).getOrElse("/Users/jteoh/Code/FineGrainedDataProvenance/part-00000")

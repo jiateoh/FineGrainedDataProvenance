@@ -18,7 +18,8 @@ trait Provenance extends Serializable {
 
 object Provenance {
   var count = 0
-  private var provenanceFactory: ProvenanceFactory = RoaringBitmapProvenance
+  private var provenanceFactory: ProvenanceFactory = _
+  setProvenanceFactory(RoaringBitmapProvenance)
   private var initialized: Boolean = false
   
   def createProvenance(id: Long): Provenance = {
@@ -27,7 +28,7 @@ object Provenance {
     provenanceFactory.create(id)
   }
   
-  def setProvenance(provenanceFactory: ProvenanceFactory): Unit = {
+  def setProvenanceFactory(provenanceFactory: ProvenanceFactory): Unit = {
     initialized = true
     println("-" * 40)
     println(s"Provenance tracker set to ${provenanceFactory.getClass.getSimpleName}")
@@ -35,13 +36,14 @@ object Provenance {
     this.provenanceFactory = provenanceFactory
   }
   
-  def setProvenance(provenanceFactoryStr: String): Unit = {
+  def setProvenanceType(provenanceFactoryStr: String): Unit = {
     val newFactory = provenanceFactoryStr match {
       case "dummy" => DummyProvenance
       case "bitmap" => RoaringBitmapProvenance
+      case "set" => SetProvenance
       case _ => throw new UnsupportedOperationException(s"Unknown provenance type: $provenanceFactoryStr")
     }
-    setProvenance(newFactory)
+    setProvenanceFactory(newFactory)
   }
   
   

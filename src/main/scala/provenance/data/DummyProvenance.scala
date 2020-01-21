@@ -8,7 +8,6 @@ class DummyProvenance extends Provenance {
   override def count: Int = 0
   
   override def estimateSize: Long = 0L
-  
 }
 
 

@@ -13,7 +13,8 @@ class RoaringBitmapProvenance(var bitmap: RoaringBitmap) extends Provenance with
         bitmap.or(rbp.bitmap)
         // Optional (but potentially unsafe/incorrect?) operation to pre-emptively free memory
         //rbp.bitmap.clear()
-      case other => throw new NotImplementedError(s"Unknown provenance type! $other")
+      case other => throw new NotImplementedError(s"Unsupported RoaringBitmap merge provenance " +
+                                                    s"type! $other")
     }
     this
   }

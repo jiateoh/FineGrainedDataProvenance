@@ -1,7 +1,6 @@
 package trackers
 
 import org.roaringbitmap.RoaringBitmap
-import provenance.DummyProvenance
 import provenance.data.{DummyProvenance, RoaringBitmapProvenance}
 
 import scala.collection.mutable
