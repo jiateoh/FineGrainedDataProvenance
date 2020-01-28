@@ -10,7 +10,7 @@ class DummyProvenance private extends Provenance {
       case _ => false
     }
   }
-  override def _cloneProvenance(): Provenance = this
+  override def cloneProvenance(): Provenance = this
   
   override def merge(other: Provenance): Provenance = other
   

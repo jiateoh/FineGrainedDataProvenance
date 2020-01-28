@@ -5,7 +5,7 @@ import org.apache.spark.util.SizeEstimator
 import scala.collection.mutable
 
 class SetProvenance(val data: mutable.Set[Int]) extends DataStructureProvenance(data) {
-  override def _cloneProvenance(): Provenance = {
+  override def cloneProvenance(): Provenance = {
     val dataCopy: mutable.Set[Int] = data.clone
     new SetProvenance(dataCopy)
   }

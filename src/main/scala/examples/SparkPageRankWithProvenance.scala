@@ -77,10 +77,12 @@ object SparkPageRankWithProvenance {
     val iters = args.lift(1).map(_.toInt).getOrElse(10)
  
     // set provenance if available.
-    val provenanceType = args.lift(3).filter(_.nonEmpty).map({x =>
-      println("Warning: Setting provenance type has no effect on cluster execution right" +
-                " now due to misconfigurations in JVM setup")
+    args.lift(3).filter(_.nonEmpty).foreach({x =>
       Provenance.setProvenanceType(x)
+    })
+  
+    args.lift(4).foreach({x =>
+      Provenance.setLazyClone(x.toBoolean)
     })
     
     

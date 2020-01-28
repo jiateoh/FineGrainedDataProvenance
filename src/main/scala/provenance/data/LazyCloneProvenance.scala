@@ -8,11 +8,10 @@ class LazyCloneProvenance(val orig: Provenance) extends Provenance {
   override def equals(obj: Any): Boolean = orig.equals(obj)
   
   override def toString: String = s"*${orig.toString} (lazy clone)"
-  override def _cloneProvenance(): Provenance = this
   override def cloneProvenance(): Provenance = this
   
   /** Merges two provenance instances (in place), returning the current instance after merging. */
-  override def merge(other: Provenance): Provenance = orig._cloneProvenance().merge(other)
+  override def merge(other: Provenance): Provenance = orig.cloneProvenance().merge(other)
   
   /** Returns number of provenance IDs. */
   override def count: Int = orig.count

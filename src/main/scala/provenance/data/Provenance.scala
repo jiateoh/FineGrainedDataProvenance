@@ -2,13 +2,7 @@ package provenance.data
 
 trait Provenance extends Serializable {
   
-  private lazy val lazyClone = new LazyCloneProvenance(this)
-  // Internal clone function
-  private[data] def _cloneProvenance(): Provenance
-  
-  def cloneProvenance(): Provenance = {
-    lazyClone
-  }
+  def cloneProvenance(): Provenance
   
   /** Merges two provenance instances (in place), returning the current instance after merging. */
   def merge(other: Provenance): Provenance
@@ -22,20 +16,21 @@ trait Provenance extends Serializable {
 }
 
 object Provenance {
-  var count = 0
+  var useLazyClone: Boolean = _
+  def setLazyClone(lazyClone: Boolean): Unit = {
+    println("-" * 40)
+    println(s"Lazy clone configuration: $lazyClone")
+    println("-" * 40)
+    this.useLazyClone = lazyClone
+  }
+  setLazyClone(true)
+
+  
   var provenanceFactory: ProvenanceFactory = _
   setProvenanceFactory(RoaringBitmapProvenance)
   //setProvenanceFactory(SetProvenance)
-  private var initialized: Boolean = false
-  
-  def createProvenance(id: Long): Provenance = {
-    //if(!initialized) initializeFromConf()
-    count += 1
-    provenanceFactory.create(id)
-  }
   
   def setProvenanceFactory(provenanceFactory: ProvenanceFactory): Unit = {
-    initialized = true
     println("-" * 40)
     println(s"Provenance tracker set to ${provenanceFactory.getClass.getSimpleName}")
     println("-" * 40)
