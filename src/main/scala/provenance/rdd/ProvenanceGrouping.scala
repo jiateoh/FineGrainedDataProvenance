@@ -5,7 +5,7 @@ import provenance.data.Provenance
 import scala.collection.generic.CanBuildFrom
 import scala.reflect.ClassTag
 
-class ProvenanceGrouping[T](data: Iterable[ProvenanceRow[T]]) extends TraversableOnce[T] {
+class ProvenanceGrouping[T](data: Iterable[ProvenanceRow[T]]) extends TraversableOnce[T] with Serializable {
   // collection-like object that tracks provenance. Due to engineering effort, this implements a
   // minimal subset of operations required for research, but in practice it should ideally
   // implement its own Iterable interface.

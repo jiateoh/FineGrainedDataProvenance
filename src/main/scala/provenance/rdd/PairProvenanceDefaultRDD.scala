@@ -2,10 +2,12 @@ package provenance.rdd
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.serializer.Serializer
-import org.apache.spark.{HashPartitioner, Partitioner}
-import provenance.data.Provenance
+import org.apache.spark.{HashPartitioner, Partitioner, SparkEnv}
+import provenance.data.{DummyProvenance, Provenance}
+import provenance.serde.ProvenanceDeduplicationSerializer
 import sparkwrapper.CompactBuffer
 
+import scala.collection.mutable
 import scala.reflect.ClassTag
 
 class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])
@@ -53,7 +55,9 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])
         val resultTraversable = f((k, v))
         resultTraversable match {
           case provenanceGroup: ProvenanceGrouping[U] =>
+            // TODO fix this up to merge in the existing provenance
             provenanceGroup.getData
+            //provenanceGroup.getData.map(pair => (pair._1, prov))
           case _ =>
             resultTraversable.map((_, prov))
         }
@@ -112,6 +116,11 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])
                                      partitioner: Partitioner = defaultPartitioner,
                                      mapSideCombine: Boolean = true,
                                      serializer: Serializer = null)(implicit ct: ClassTag[C]): PairProvenanceDefaultRDD[K, C] = {
+    // Based on ShuffledRDD implementation for serializer
+    val baseSerializer = Option(serializer).getOrElse(SparkEnv.get.serializerManager.getSerializer(
+      implicitly[ClassTag[K]],
+      if (mapSideCombine) implicitly[ClassTag[C]] else implicitly[ClassTag[V]]))
+    val dedupSerializer = new ProvenanceDeduplicationSerializer(baseSerializer, partitioner)
     
     new PairProvenanceDefaultRDD[K, C](
       rdd.combineByKeyWithClassTag[ProvenanceRow[C]](
@@ -119,8 +128,7 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])
         // TODO existing bug: cloning provenance is expensive and should be done lazily...
         (valueRow: ProvenanceRow[V]) =>
           (createCombiner(valueRow._1),
-            //valueRow._2.cloneProvenance()
-            valueRow._2 // TODO: intentional bug in not-cloning ever
+            valueRow._2.cloneProvenance()
           ),
         (combinerRow: ProvenanceRow[C], valueRow: ProvenanceRow[V]) => {
           ( mergeValue(combinerRow._1, valueRow._1),
@@ -134,7 +142,8 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])
         },
         partitioner,
         mapSideCombine,
-        serializer
+        dedupSerializer
+        // serializer
         ))
   }
   
@@ -174,14 +183,25 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])
     val createCombiner = (v: ProvenanceRow[V]) => CompactBuffer(v)
     val mergeValue = (buf: CompactBuffer[ProvenanceRow[V]], v: ProvenanceRow[V]) => buf += v
     val mergeCombiners = (c1: CompactBuffer[ProvenanceRow[V]], c2: CompactBuffer[ProvenanceRow[V]]) => c1 ++= c2
+    val baseSerializer = SparkEnv.get.serializerManager.getSerializer(implicitly[ClassTag[K]], implicitly[ClassTag[V]])
+    val dedupSerializer = new ProvenanceDeduplicationSerializer(baseSerializer, partitioner)
     val bufs: RDD[(K, CompactBuffer[ProvenanceRow[V]])] =
       rdd.combineByKeyWithClassTag[CompactBuffer[ProvenanceRow[V]]](
-        createCombiner, mergeValue, mergeCombiners, partitioner, mapSideCombine = false)
+        createCombiner, mergeValue, mergeCombiners, partitioner, mapSideCombine = false,
+        //)
+        serializer = dedupSerializer)
     
     val underlyingResult: RDD[(K, (ProvenanceGrouping[V], Provenance))] =
       bufs.mapValues(buf => {
         val group = new ProvenanceGrouping(buf)
-        (group, group.combinedProvenance)
+        // TODO: for correctness, this provenance should be group.combinedProvenance
+        // However, for something such as pagerank, we know it is not required because it is not
+        // used later
+        // Is there a way we can leverage the DAG information or otherwise "look ahead" to
+        // determine what to do here?
+        val groupProvenance = group.combinedProvenance
+        
+        (group, groupProvenance)
       })
     new PairProvenanceDefaultRDD(underlyingResult)
   }
@@ -226,12 +246,47 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])
     assert(rdd.firstSource == other.rdd.firstSource,
            "Provenance-based join is currently supported only for RDDs originating from the same " +
              "input data (e.g. self-join): " + s"${rdd.firstSource} vs. ${other.rdd.firstSource}")
-    val value: RDD[(K, (Iterable[(V, Provenance)], Iterable[(W, Provenance)]))] = rdd.cogroup(other.rdd)
     val result: RDD[(K, ProvenanceRow[(V, W)])] = rdd.cogroup(other.rdd).flatMapValues(pair =>
            for (thisRow <- pair._1.iterator; otherRow <- pair._2.iterator)
+             // TODO: enhance this provenance precision somehow.
              yield ((thisRow._1, otherRow._1), thisRow._2.cloneProvenance().merge(otherRow._2))
       )
     new PairProvenanceDefaultRDD(result)
   }
+  
+  private type ProvenanceId = Int
+  private type ShuffleProvenance = Either[Provenance, ProvenanceId]
+  private type ShuffleProvenanceRow[V] = (V, ShuffleProvenance)
+  // General idea: pre-shuffle, we can deduplicate within each partition + key. For duplicates,
+  // we replace the provenance with some unique ID that can be used post-shuffle for retrieval
+  private def applyPreShuffle(): RDD[(K, ShuffleProvenanceRow[V])] = {
+    rdd.mapPartitions(iterator => {
+      val duplicateTracker = new mutable.HashMap[(K, Provenance), ProvenanceId]
+      iterator.map({
+        case (key, provenanceRow) => {
+          val (value, prov) = provenanceRow
+          val lookupKey = (key, provenanceRow._2)
+          val serProvenance: ShuffleProvenance = if (duplicateTracker.contains(lookupKey)) {
+            Right(duplicateTracker(lookupKey))
+          } else {
+            // TODO use a unique hashcode or some better way to look things up?
+            duplicateTracker.put(lookupKey, prov.hashCode())
+            Left(prov)
+          }
+          (key, (value, serProvenance))
+        }
+      })
+    })
+  }
+    
+    // Post-shuffle: we operate under the assumption that records from a given partition will be
+    // received in their original order. As such, for every key + pre-shuffle partition (source),
+    // we should see a provenance object at least once and any subsequent instances as IDs.
+//  private def applyPostShuffle(shuffleResult: RDD[(K, ShuffleProvenanceRow[V])] = {
+//    shuffleResult.mapPartitions(iterator => {
+//      val duplicateTracker = new mutable.HashMap[]()
+//    })
+//  }
+//  }
   
 }

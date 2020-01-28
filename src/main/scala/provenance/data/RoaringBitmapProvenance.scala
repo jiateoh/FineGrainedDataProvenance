@@ -4,8 +4,8 @@ import java.io.{IOException, ObjectInputStream, ObjectOutputStream}
 
 import org.roaringbitmap.RoaringBitmap
 
-class RoaringBitmapProvenance(var bitmap: RoaringBitmap) extends Provenance with Serializable {
-  override def cloneProvenance(): Provenance = new RoaringBitmapProvenance(bitmap.clone())
+class RoaringBitmapProvenance(var bitmap: RoaringBitmap) extends DataStructureProvenance(bitmap) {
+  override def _cloneProvenance(): Provenance = new RoaringBitmapProvenance(bitmap.clone())
   
   override def merge(other: Provenance): this.type = {
     other match {
@@ -13,6 +13,8 @@ class RoaringBitmapProvenance(var bitmap: RoaringBitmap) extends Provenance with
         bitmap.or(rbp.bitmap)
         // Optional (but potentially unsafe/incorrect?) operation to pre-emptively free memory
         //rbp.bitmap.clear()
+      case lazyClone: LazyCloneProvenance =>
+        merge(lazyClone.orig)
       case other => throw new NotImplementedError(s"Unsupported RoaringBitmap merge provenance " +
                                                     s"type! $other")
     }
@@ -43,14 +45,16 @@ class RoaringBitmapProvenance(var bitmap: RoaringBitmap) extends Provenance with
   }
   
   override def toString: String = {
-    val cardinality = this.bitmap.getCardinality
     var count = 0
+    val printLimit = 10
     val iter = this.bitmap.iterator()
     var buf = new StringBuilder("[")
-    while(count < 20 && iter.hasNext()) {
+    while(count < printLimit && iter.hasNext()) {
       buf ++= iter.next().toString
       if(iter.hasNext) buf += ','
+      count += 1
     }
+    if(iter.hasNext) buf ++= s" ...(${this.bitmap.getCardinality - printLimit} more)"
     buf += ']'
     s"${this.getClass.getSimpleName}: ${buf.toString()}"
   }

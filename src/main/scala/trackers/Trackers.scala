@@ -135,5 +135,5 @@ object DummyProvenanceTrackerCreator extends TrackerCreator {
   override def createTracker[T](value: T, id: Long)
                                (implicit ct: ClassTag[T]): BaseTracker[T] =
   //new DummyTracker[T](value)
-    new ProvenanceTracker(value, new DummyProvenance())
+    new ProvenanceTracker(value, DummyProvenance.create(id))
 }

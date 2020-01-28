@@ -4,8 +4,8 @@ import org.apache.spark.util.SizeEstimator
 
 import scala.collection.mutable
 
-class SetProvenance(val data: mutable.Set[Int]) extends Provenance {
-  override def cloneProvenance(): Provenance = {
+class SetProvenance(val data: mutable.Set[Int]) extends DataStructureProvenance(data) {
+  override def _cloneProvenance(): Provenance = {
     val dataCopy: mutable.Set[Int] = data.clone
     new SetProvenance(dataCopy)
   }
@@ -17,6 +17,8 @@ class SetProvenance(val data: mutable.Set[Int]) extends Provenance {
         //this.data.addAll(otherSet.data)
         // ideally this should use addAll, but that doesn't exist for some reason.
         this.data ++= otherSet.data
+      case lazyClone: LazyCloneProvenance =>
+        merge(lazyClone.orig)
       case other => throw new NotImplementedError(s"Unsupported Set merge provenance " +
                                                     s"type! $other")
     }
@@ -28,6 +30,10 @@ class SetProvenance(val data: mutable.Set[Int]) extends Provenance {
   
   /** Returns estimate in serialization size, experimental. */
   override def estimateSize: Long = SizeEstimator.estimate(this)
+  
+  override def toString: String = {
+    s"${this.getClass.getSimpleName}: [${data.toSeq.sorted.mkString(",")}]"
+  }
 }
 
 object SetProvenance extends ProvenanceFactory {

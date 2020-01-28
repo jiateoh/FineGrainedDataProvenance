@@ -8,7 +8,7 @@ import trackers.{BaseTracker, RoaringBitmapTracker, SetTracker, Trackers}
 
 import scala.collection.mutable
 
-class SparkConfWithDP(withKryo: Boolean = true, withTrackers: Boolean = false) extends SparkConf {
+class SparkConfWithDP(withKryo: Boolean = false, withTrackers: Boolean = false) extends SparkConf {
   if(withKryo) {
     set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
     if(withTrackers) {

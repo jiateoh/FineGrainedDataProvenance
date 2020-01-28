@@ -2,8 +2,13 @@ package provenance.data
 
 trait Provenance extends Serializable {
   
-  // Renamed because clone() is a built-in function.
-  def cloneProvenance(): Provenance
+  private lazy val lazyClone = new LazyCloneProvenance(this)
+  // Internal clone function
+  private[data] def _cloneProvenance(): Provenance
+  
+  def cloneProvenance(): Provenance = {
+    lazyClone
+  }
   
   /** Merges two provenance instances (in place), returning the current instance after merging. */
   def merge(other: Provenance): Provenance
@@ -18,8 +23,9 @@ trait Provenance extends Serializable {
 
 object Provenance {
   var count = 0
-  private var provenanceFactory: ProvenanceFactory = _
+  var provenanceFactory: ProvenanceFactory = _
   setProvenanceFactory(RoaringBitmapProvenance)
+  //setProvenanceFactory(SetProvenance)
   private var initialized: Boolean = false
   
   def createProvenance(id: Long): Provenance = {

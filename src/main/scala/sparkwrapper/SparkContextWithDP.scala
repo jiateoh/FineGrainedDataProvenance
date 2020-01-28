@@ -30,9 +30,12 @@ class SparkContextWithDP(sc: SparkContext) {
   
   def textFileProv(filepath: String): ProvenanceRDD[String] = {
     val rdd = sc.textFile(filepath)
+    // This needs to be called outside to ensure cluster usage works with the right factory
+    // Previously I used Provenance.create for a counter, but it's unreliable for cluster usage
+    val provCreatorFn = Provenance.provenanceFactory.create _
     val tracked_rdd = Utils
       .setInputZip(rdd.zipWithUniqueId())
-      .mapValues(id => Provenance.createProvenance(id))
+      .mapValues(provCreatorFn)
     new FlatProvenanceDefaultRDD[String](tracked_rdd)
   }
   

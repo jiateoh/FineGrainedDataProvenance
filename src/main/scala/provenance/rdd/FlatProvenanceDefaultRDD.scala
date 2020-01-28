@@ -21,7 +21,10 @@ class FlatProvenanceDefaultRDD[T: ClassTag](val rdd: RDD[ProvenanceRow[T]]) exte
         val resultTraversable = f(v)
         resultTraversable match {
           case provenanceGroup: ProvenanceGrouping[U] =>
-            provenanceGroup.getData
+            // TODO undo this as it's ignoring optimized provenance
+            //provenanceGroup.getData
+            provenanceGroup.getData.map(pair => (pair._1, prov))
+            
           case _ =>
             resultTraversable.map((_, prov))
         }
