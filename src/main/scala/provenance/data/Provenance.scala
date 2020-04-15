@@ -25,6 +25,14 @@ object Provenance {
   }
   setLazyClone(true)
 
+  var useDedupSerializer: Boolean = _
+  def setDedupSerializer(dedup: Boolean): Unit = {
+    println("-" * 40)
+    println(s"Deduplication serializer configuration: $dedup")
+    println("-" * 40)
+    this.useDedupSerializer = dedup
+  }
+  setDedupSerializer(true)
   
   var provenanceFactory: ProvenanceFactory = _
   setProvenanceFactory(RoaringBitmapProvenance)

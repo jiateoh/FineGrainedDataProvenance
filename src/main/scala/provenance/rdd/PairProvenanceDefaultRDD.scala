@@ -117,10 +117,16 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])
                                      mapSideCombine: Boolean = true,
                                      serializer: Serializer = null)(implicit ct: ClassTag[C]): PairProvenanceDefaultRDD[K, C] = {
     // Based on ShuffledRDD implementation for serializer
-    val baseSerializer = Option(serializer).getOrElse(SparkEnv.get.serializerManager.getSerializer(
-      implicitly[ClassTag[K]],
-      if (mapSideCombine) implicitly[ClassTag[C]] else implicitly[ClassTag[V]]))
-    val dedupSerializer = new ProvenanceDeduplicationSerializer(baseSerializer, partitioner)
+    val resultSerializer = if(Provenance.useDedupSerializer) {
+      val baseSerializer =
+        Option(serializer).getOrElse(SparkEnv.get.serializerManager.getSerializer(
+                implicitly[ClassTag[K]],
+                if (mapSideCombine) implicitly[ClassTag[C]] else implicitly[ClassTag[V]]))
+      new ProvenanceDeduplicationSerializer(baseSerializer, partitioner)
+    } else {
+      serializer
+    }
+    
     val createProvCombiner = if(Provenance.useLazyClone) {
       valueRow: ProvenanceRow[V] =>
         (createCombiner(valueRow._1),
@@ -152,8 +158,7 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])
         mergeProvCombiners,
         partitioner,
         mapSideCombine,
-        dedupSerializer
-        // serializer
+        resultSerializer
         ))
   }
   
@@ -193,13 +198,17 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])
     val createCombiner = (v: ProvenanceRow[V]) => CompactBuffer(v)
     val mergeValue = (buf: CompactBuffer[ProvenanceRow[V]], v: ProvenanceRow[V]) => buf += v
     val mergeCombiners = (c1: CompactBuffer[ProvenanceRow[V]], c2: CompactBuffer[ProvenanceRow[V]]) => c1 ++= c2
-    val baseSerializer = SparkEnv.get.serializerManager.getSerializer(implicitly[ClassTag[K]], implicitly[ClassTag[V]])
-    val dedupSerializer = new ProvenanceDeduplicationSerializer(baseSerializer, partitioner)
+    val serializer = if(Provenance.useDedupSerializer) {
+      val baseSerializer = SparkEnv.get.serializerManager.getSerializer(implicitly[ClassTag[K]], implicitly[ClassTag[V]])
+      new ProvenanceDeduplicationSerializer(baseSerializer, partitioner)
+    } else {
+      null // null is the default argument value used, so it's safe here.
+    }
+    
     val bufs: RDD[(K, CompactBuffer[ProvenanceRow[V]])] =
       rdd.combineByKeyWithClassTag[CompactBuffer[ProvenanceRow[V]]](
         createCombiner, mergeValue, mergeCombiners, partitioner, mapSideCombine = false,
-        //)
-        serializer = dedupSerializer)
+        serializer = serializer)
     
     val underlyingResult: RDD[(K, (ProvenanceGrouping[V], Provenance))] =
       bufs.mapValues(buf => {
