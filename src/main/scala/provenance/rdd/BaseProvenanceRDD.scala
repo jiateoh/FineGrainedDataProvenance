@@ -1,0 +1,42 @@
+package provenance.rdd
+
+import org.apache.spark.rdd.RDD
+import org.apache.spark.storage.StorageLevel
+import symbolicprimitives.SymBase
+
+import scala.reflect.ClassTag
+
+abstract class BaseProvenanceRDD[T : ClassTag](baseRDD: RDD[_]) extends ProvenanceRDD[T] {
+
+  /** Specialized flatMap to detect if a ProvenanceGrouping is used. */
+  // def flatMap[U: ClassTag](f: T => ProvenanceGrouping[U]): FlatProvenanceDefaultRDD[U]
+
+  final def count(): Long = baseRDD.count()
+//
+//  final def distinct(): ProvenanceRDD[T] = this.distinct(baseRDD.getNumPartitions)
+
+  final def persist(newLevel: StorageLevel): this.type = {
+    baseRDD.persist(newLevel)
+    this
+  }
+
+  final def persist(): this.type = {
+    baseRDD.persist()
+    this
+  }
+
+  final def unpersist(blocking: Boolean): this.type = {
+    baseRDD.unpersist(blocking)
+    this
+  }
+
+  final def cache(): this.type = {
+    baseRDD.cache()
+    this
+  }
+
+  final def setName(name: String): this.type = {
+    baseRDD.setName(name)
+    this
+  }
+}

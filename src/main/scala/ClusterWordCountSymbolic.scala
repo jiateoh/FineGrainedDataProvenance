@@ -1,4 +1,6 @@
 import org.apache.spark.sql.SparkSession
+import provenance.data.InfluenceMarker
+import sparkwrapper.SparkContextWithDP
 import symbolicprimitives.{SymInt, SymString, Utils}
 
 /**
@@ -10,30 +12,16 @@ object ClusterWordCountSymbolic {
     val spark = SparkSession
                     .builder
                     // .appName("Cluster WordCount (Symbolic)")
+        .master("local[*]")
                     .getOrCreate()
-    val sc = spark.sparkContext
-    
-    val input = sc.textFile(args.headOption.getOrElse("file.log"))
+    val sc = new SparkContextWithDP(spark.sparkContext)
 
-    val input_new = Utils.setInputZip(input.zipWithIndex()) // << Rewrites inserted
-      .map(s => new SymString(s._1, s._2)) // << Rewrites Inserted
+    val input = sc.textFileProv(("file_num.log"))
+    val count =
+      input.map(s => (s.split(',')(0),s.split(',')(1).toInt))
+      .reduceByKey(_+_, (a,b) => if(a > b) InfluenceMarker.left else InfluenceMarker.right )
+    val arr = count.collectWithProvenance()
+      arr.foreach(println)
 
-    // s x s
-    val count = input_new.flatMap(s => s.split(' '))
-      .map(s => (s, new SymInt(1, s.getProvenance())))
-      .reduceByKey(_ + _)//.filter(s => s._1.getValue().contains("ali"))
-      //.collect()
-      //.take(100)
-      .count()
-    println(count)
-
-    // Measuring Storage overhead
-    //println(count.map(a => a._2.getProvenanceSize()).sum + " Bytes")
-    //count.map(a => a._2.getProvenanceSize()).reduce(_+_) +
-    //    println(count.head)
-    //count.foreach(println)
-
-    // Getting Provenance here
-    //Utils.retrieveProvenance(count.head._2.getProvenance())
   }
 }

@@ -4,7 +4,7 @@ package symbolicprimitives
   * Created by malig on 4/25/19.
   */
 
-import org.roaringbitmap.RoaringBitmap
+import provenance.data.Provenance
 
 object SymImplicits {
 
@@ -12,9 +12,11 @@ object SymImplicits {
   implicit def symFloat2Float(s: SymFloat): Float = s.getValue()
   implicit def symDouble2Double(s: SymDouble): Double = s.getValue()
 
-  implicit def int2SymInt(s: Int): SymInt = new SymInt(s, new RoaringBitmap())
-  implicit def float2SymFloat(s: Float): SymFloat = new SymFloat(s, new RoaringBitmap())
-  implicit def double2SymDouble(s: Double): SymDouble = new SymDouble(s, new RoaringBitmap())
+  //TODO: Using zero as default provenance here. We need to chain this disconnect through dependency analysis
+
+  implicit def int2SymInt(s: Int): SymInt = new SymInt(s, Provenance.provenanceFactory.create(-1))
+  implicit def float2SymFloat(s: Float): SymFloat = new SymFloat(s, Provenance.provenanceFactory.create(-1))
+  implicit def double2SymDouble(s: Double): SymDouble = new SymDouble(s, Provenance.provenanceFactory.create(-1))
 
   implicit def symInt2String(s: SymInt): String = s.getValue().toString
   implicit def symFloat2String(s: SymFloat): String = s.getValue().toString
@@ -24,36 +26,17 @@ object SymImplicits {
   implicit def symFloat2SymInt(s: SymFloat): SymInt = new SymInt(s.getValue().toInt , s.getProvenance())
   implicit def symFloat2SymDouble(s: SymFloat): String = new SymDouble(s.getValue().toDouble , s.getProvenance())
   implicit def symInt2SymDouble(s: SymInt): String = new SymDouble(s.getValue().toDouble , s.getProvenance())
-  // Todo: Insert s.getClauses
 
 }
 
-class SymInt(i: Int, rr : RoaringBitmap) extends Serializable{
+case class SymInt(value: Int, p : Provenance) extends SymBase(p) {
 
-  private val value: Int = i
-
-  def this(i:Int, influenceOffset : Long) {
-    this(i,new RoaringBitmap)
-
-    if(influenceOffset > Int.MaxValue) {
-      throw new UnsupportedOperationException("The offset is greater than Int.Max which is not supported yet")
-    }
-
-    this.rr.add(influenceOffset.asInstanceOf[Int])
-  }
 
   // TODO: Implement the influence/rank function here
-  def mergeProvenance(rr_other : RoaringBitmap): RoaringBitmap = {
-   RoaringBitmap.or(rr, rr_other)
+  def mergeProvenance(prov_other : Provenance): Provenance = {
+   prov.cloneProvenance().merge(prov_other)
   }
 
-  def getProvenanceSize(): Int ={
-    rr.getSizeInBytes
-  }
-
-  def getProvenance(): RoaringBitmap ={
-    rr
-  }
 
   def getValue(): Int = {
     return value
@@ -74,33 +57,33 @@ class SymInt(i: Int, rr : RoaringBitmap) extends Serializable{
 
   def +(x: Int): SymInt = {
     val d = value + x
-    new SymInt(d, rr)
+    new SymInt(d, prov)
   }
 
   def -(x: Int): SymInt = {
     val d = value - x
-    new SymInt(d, rr)
+    new SymInt(d, prov)
   }
 
   def *(x: Int): SymInt = {
     val d = value * x
-    new SymInt(d, rr)
+    new SymInt(d, prov)
   }
 
   def *(x: Float): SymFloat = {
     val d = value * x
-    new SymFloat(d, rr)
+    new SymFloat(d, prov)
   }
 
 
   def /(x: Int): SymDouble= {
     val d = value / x
-    new SymDouble(d, rr )
+    new SymDouble(d, prov )
   }
 
   def /(x: Long): SymDouble= {
     val d = value / x
-    new SymDouble(d, rr)
+    new SymDouble(d, prov)
   }
 
   def +(x: SymInt): SymInt = {
@@ -126,7 +109,7 @@ class SymInt(i: Int, rr : RoaringBitmap) extends Serializable{
   def ==(x: Int): Boolean = value == x
 
   override def toString: String =
-    value.toString + s""" (Provenance Bitmap: ${rr})"""
+    value.toString + s""" (Provenance Bitmap: ${prov})"""
 
   def toByte: Byte = value.toByte
 
@@ -223,6 +206,7 @@ class SymInt(i: Int, rr : RoaringBitmap) extends Serializable{
   def >(x: Char): Boolean = value > x
 
   def >(x: Int): Boolean = value > x
+  def >(x: SymInt): Boolean = value > x.value
 
   def >(x: Long): Boolean = value > x
 

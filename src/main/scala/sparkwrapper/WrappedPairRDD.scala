@@ -25,5 +25,4 @@ class WrappedPairRDD[K, V](rdd: PairRDDFunctions[K, Tracker[V]])(
       val value = func(v1.value, v2.value)
       new Tracker(value,  rankBitmaps(v1.bitmap, v2.bitmap))
     })
-
 }

@@ -1,36 +1,21 @@
 package symbolicprimitives
 
-import org.roaringbitmap.RoaringBitmap
+import provenance.data.Provenance
 
 /**
   * Created by malig on 4/25/19.
   */
-class SymDouble(i: Double, rr: RoaringBitmap) extends Serializable {
+case class SymDouble(i: Double, prov: Provenance) {
 
   private val value: Double = i
 
-  def this(i: Double, influenceOffset: Long) {
-    this(i, new RoaringBitmap)
-
-    if (influenceOffset > Int.MaxValue) {
-      throw new UnsupportedOperationException(
-        "The offset is greater than Int.Max which is not supported yet")
-    }
-
-    rr.add(influenceOffset.asInstanceOf[Int])
-  }
-
   // TODO: Implement the influence/rank function here
-  def mergeProvenance(rr_other: RoaringBitmap): RoaringBitmap = {
-    RoaringBitmap.or(rr, rr_other)
+  def mergeProvenance(prov_other: Provenance): Provenance = {
+    prov.merge(prov_other)
   }
 
-  def getProvenanceSize(): Int = {
-    rr.getSizeInBytes
-  }
-
-  def getProvenance(): RoaringBitmap = {
-    rr
+  def getProvenance(): Provenance = {
+    prov
   }
 
   def getValue(): Double = {
@@ -50,24 +35,24 @@ class SymDouble(i: Double, rr: RoaringBitmap) extends Serializable {
   }
 
   def +(x: Double): SymDouble = {
-    new SymDouble(value + x, rr)
+    new SymDouble(value + x, prov)
   }
 
   def -(x: Double): SymDouble = {
-    new SymDouble(value - x, rr)
+    new SymDouble(value - x, prov)
   }
 
   def *(x: Double): SymDouble = {
-    new SymDouble(value * x, rr)
+    new SymDouble(value * x, prov)
 
   }
 
   def *(x: Float): SymDouble = {
-    new SymDouble(value * x, rr)
+    new SymDouble(value * x, prov)
   }
 
   def /(x: Double): SymDouble = {
-    new SymDouble(value / x, rr)
+    new SymDouble(value / x, prov)
   }
 
   def +(x: SymDouble): SymDouble = {
@@ -86,8 +71,10 @@ class SymDouble(i: Double, rr: RoaringBitmap) extends Serializable {
     new SymDouble(value / x.getValue(), mergeProvenance(x.getProvenance()))
   }
 
+  // TODO: Following are control flow provenance that, in my opinion, should be configurable. [Gulzar]
+
   def <(x: SymDouble): Boolean = {
-    rr.or(x.getProvenance())
+    prov.merge(x.getProvenance())
     return value < x.getValue()
   }
 
@@ -96,11 +83,11 @@ class SymDouble(i: Double, rr: RoaringBitmap) extends Serializable {
   }
 
   def >=(x: SymDouble): Boolean = {
-    rr.or(x.getProvenance())
+    prov.merge(x.getProvenance())
     value >= x.getValue()
   }
   def <=(x: SymDouble): Boolean = {
-    rr.or(x.getProvenance())
+    prov.merge(x.getProvenance())
     value <= x.getValue()
   }
 
@@ -112,7 +99,7 @@ class SymDouble(i: Double, rr: RoaringBitmap) extends Serializable {
   }
 
   override def toString: String =
-    value.toString + s""" (Most Influential Input Offset: ${rr})"""
+    value.toString + s""" (Most Influential Input Offset: ${prov})"""
   /**
     * Not Supported Symbolically yet
     **/

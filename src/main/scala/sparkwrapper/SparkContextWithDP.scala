@@ -1,26 +1,45 @@
 package sparkwrapper
 
 import org.apache.spark.SparkContext
-import org.roaringbitmap.RoaringBitmap
-import symbolicprimitives.{Tracker, Utils}
+import org.apache.spark.rdd.RDD
+import provenance.data.Provenance
+import provenance.rdd.{FlatProvenanceDefaultRDD, ProvenanceRDD}
+import symbolicprimitives.{SymString, Utils}
 
 /**
   * Created by malig on 12/3/19.
   */
 class SparkContextWithDP(sc: SparkContext) {
-  def textFile(filepath: String): WrappedRDD[String] = {
+
+
+  def textFile(filepath: String): RDD[String] ={
+    sc.textFile(filepath)
+  }
+  def textFileUDFProv(filepath: String): RDD[SymString] = {
     val rdd = sc.textFile(filepath)
+    // This needs to be called outside to ensure cluster usage works with the right factory
+    // Previously I used Provenance.create for a counter, but it's unreliable for cluster usage
+    val provCreatorFn = Provenance.provenanceFactory.create _
     val tracked_rdd = Utils
-      .setInputZip(rdd.zipWithIndex())
-      .map { s =>
-        val rr = new RoaringBitmap
-        if (s._2 > Int.MaxValue)
-          throw new UnsupportedOperationException(
-            "The offset is greater than Int.Max which is not supported yet")
-        rr.add(s._2.asInstanceOf[Int])
-        new Tracker(s._1, rr)
+      .setInputZip(rdd.zipWithUniqueId())
+      .map { record =>
+        val prov = provCreatorFn(record._2)
+        (SymString(record._1, prov))
       }
-    return new WrappedRDD[String](tracked_rdd)
+    tracked_rdd
   }
 
+  def textFileProv(filepath: String): ProvenanceRDD[SymString] = {
+    val rdd = sc.textFile(filepath)
+    // This needs to be called outside to ensure cluster usage works with the right factory
+    // Previously I used Provenance.create for a counter, but it's unreliable for cluster usage
+    val provCreatorFn = Provenance.provenanceFactory.create _
+    val tracked_rdd = Utils
+      .setInputZip(rdd.zipWithUniqueId())
+      .map{
+        input =>
+          val prov = provCreatorFn(input._2)
+          (SymString(input._1, prov), prov)}
+    new FlatProvenanceDefaultRDD[SymString](tracked_rdd)
+  }
 }

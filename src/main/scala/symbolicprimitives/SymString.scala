@@ -1,92 +1,90 @@
 package symbolicprimitives
 
-import org.roaringbitmap.RoaringBitmap
+import provenance.data.Provenance
 
 object StringImplicits {
   implicit def symString2string(s: SymString): String = s.getValue()
 
-  /*implicit class SymStringImplic(s:String){
-    def toSymString = {
-      new SymString(s)
-    }
-  }
-}*/
 }
 /**
   * Created by malig on 4/29/19.
   */
- class SymString(i: String, rr: RoaringBitmap)
-    extends Serializable
-{
+case class SymString(value: String,  p: Provenance) extends SymBase(p) {
 
-  private val value: String = i
-
-  def this(i:String, influenceOffset : Long) {
-    this(i,new RoaringBitmap)
-
-    if(influenceOffset > Int.MaxValue) {
-      throw new UnsupportedOperationException("The offset is greater than Int.Max which is not supported yet")
-    }
-
-    this.rr.add(influenceOffset.asInstanceOf[Int])
-  }
 
   // TODO: Implement the influence/rank function here
-  def mergeProvenance(rr_other : RoaringBitmap): RoaringBitmap = {
-    RoaringBitmap.or(rr, rr_other)
+  def mergeProvenance(prov_other : Provenance): Provenance = {
+    prov.merge(prov_other)
   }
 
-  def getProvenanceSize(): Int ={
-    rr.getSizeInBytes
-  }
-
-  def getProvenance(): RoaringBitmap ={
-    rr
-  }
 
   def getValue(): String = {
     return value
   }
 
   override def toString: String =
-    value.toString + s""" (Provenance Bitmap: ${rr})"""
+    value.toString + s""" (Provenance Bitmap: ${prov})"""
 
   /**
     * Unsupported Operations
     */
 
    def length: SymInt = {
-     new SymInt( value.length, rr)
+     new SymInt( value.length, prov)
   }
 
    def split(separator: Char): Array[SymString] = {
     value
       .split(separator)
       .map(s =>
-        new SymString(
-          s, rr))
+         SymString(
+          s, prov))
   }
-
+  def split(regex: String): Array[SymString] = {
+    value
+      .split(regex)
+      .map(s =>
+         SymString(
+          s, prov))
+  }
    def split(separator: Array[Char]): Array[SymString] = {
 
     value
       .split(separator)
       .map(s =>
-        new SymString(
-          s, rr
+         SymString(
+          s, prov
         ))
   }
 
+  def substring(arg0: SymInt): SymString = {
+      SymString(value.substring(arg0.value), mergeProvenance(arg0.prov))
+  }
+
+  def substring(arg0: Int, arg1: SymInt): SymString = {
+    SymString(value.substring(arg0, arg1.value), mergeProvenance(arg1.prov))
+  }
+  def substring(arg0: SymInt, arg1: SymInt): SymString = {
+    SymString(value.substring(arg0.value, arg1.value), mergeProvenance(arg1.prov))
+  }
+
+  def lastIndexOf(elem: Char): SymInt = {
+    SymInt(value.lastIndexOf(elem),prov)
+  }
+
+
    def toInt: SymInt ={
-    new SymInt( value.toInt, rr)
+    new SymInt( value.toInt, prov)
   }
 
    def toFloat: SymFloat =
-     new SymFloat(value.toFloat , rr)
+     new SymFloat(value.toFloat , prov)
 
    def toDouble: SymDouble ={
-    new SymDouble(value.toDouble , rr)
+    new SymDouble(value.toDouble , prov)
   }
+
+
 
   override def hashCode : Int = value.hashCode
 

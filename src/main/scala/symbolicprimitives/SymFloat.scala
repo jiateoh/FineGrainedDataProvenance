@@ -1,36 +1,22 @@
 package symbolicprimitives
 
-import org.roaringbitmap.RoaringBitmap
+import provenance.data.Provenance
 
 /**
   * Created by malig on 4/25/19.
   */
 
-class SymFloat(i: Float, rr:RoaringBitmap) extends Serializable{
+case class SymFloat(i: Float, prov:Provenance) {
 
   private var value: Float = i
 
-  def this(i:Float, influenceOffset : Long) {
-    this(i,new RoaringBitmap)
-
-    if(influenceOffset > Int.MaxValue) {
-      throw new UnsupportedOperationException("The offset is greater than Int.Max which is not supported yet")
-    }
-
-    rr.add(influenceOffset.asInstanceOf[Int])
-  }
-
   // TODO: Implement the influence/rank function here
-  def mergeProvenance(rr_other : RoaringBitmap): RoaringBitmap = {
-    RoaringBitmap.or(rr, rr_other)
+  def mergeProvenance(prov_other : Provenance): Provenance = {
+    prov.merge(prov_other)
   }
 
-  def getProvenanceSize(): Int ={
-    rr.getSizeInBytes
-  }
-
-  def getProvenance(): RoaringBitmap ={
-    rr
+  def getProvenance(): Provenance ={
+    prov
   }
 
   def getValue(): Float = {
@@ -51,23 +37,23 @@ class SymFloat(i: Float, rr:RoaringBitmap) extends Serializable{
 
   def +(x: Float): SymFloat = {
     val d = value + x
-    new SymFloat(d, rr)
+    new SymFloat(d, prov)
   }
 
   def -(x: Float): SymFloat = {
     val d = value - x
-    new SymFloat(d, rr)
+    new SymFloat(d, prov)
   }
 
   def *(x: Float): SymFloat = {
     val d = value * x
-    new SymFloat(d, rr)
+    new SymFloat(d, prov)
 
   }
 
   def /(x: Float): SymFloat = {
     val d = value / x
-    new SymFloat(d, rr)
+    new SymFloat(d, prov)
   }
 
   def +(x: SymFloat): SymFloat = {
@@ -95,7 +81,7 @@ class SymFloat(i: Float, rr:RoaringBitmap) extends Serializable{
     * Operators not Supported Symbolically yet
     **/
   override def toString: String =
-    value.toString + s""" (Most Influential Input Offset: ${rr})"""
+    value.toString + s""" (Most Influential Input Offset: ${prov})"""
 //
 //  def toByte: Byte = value.toByte
 //

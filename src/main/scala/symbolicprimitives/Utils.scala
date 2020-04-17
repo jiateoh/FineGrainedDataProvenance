@@ -2,6 +2,8 @@ package symbolicprimitives
 
 import org.apache.spark.rdd.RDD
 import org.roaringbitmap.RoaringBitmap
+import provenance.data.DummyProvenance
+import provenance.rdd.ProvenanceRow
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -38,6 +40,45 @@ object Utils {
     val rdd = zipped_input_RDD.filter(s => rr.contains(s._2.asInstanceOf[Int])).map(s => s._1)
     rdd.collect().foreach(println)
     rdd
+  }
+
+  def computeOneToOneUDF[T,U](f: T => U , input:ProvenanceRow[T] , udfAware : Boolean): ProvenanceRow[U] ={
+    input._1 match {
+      case r: SymBase =>
+        if (!udfAware) {
+          r.setProvenance(DummyProvenance.create()) // Let sym objects use a dummy provenance
+          (f(input._1), input._2) // use input provenance and pass it to next operator
+        } else {
+          val out = f(input._1)
+          out match {
+            case o: SymBase =>
+              (out, o.getProvenance())
+            case a => (a,input._2)
+          }
+        }
+      case r =>
+        (f(input._1), input._2)
+     }
+  }
+
+  def computeOneToManyUDF[T,U](f: T => TraversableOnce[U] , input:ProvenanceRow[T] , udfAware : Boolean): TraversableOnce[ProvenanceRow[U]] ={
+    input._1 match {
+      case r: SymBase =>
+        if (!udfAware) {
+          r.setProvenance(DummyProvenance.create()) // Let sym objects use a dummy provenance
+          f(input._1).map((_,input._2))
+        } else {
+          f(input._1).map{
+                out => out match {
+                  case o: SymBase =>
+                    (out, o.getProvenance())
+                  case a => (a, input._2)
+                }
+          }
+        }
+      case r =>
+        f(r).map((_,input._2))
+    }
   }
 
   // A regular expression to match classes of the internal Spark API's
