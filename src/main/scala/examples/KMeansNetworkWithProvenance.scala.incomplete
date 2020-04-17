@@ -70,7 +70,7 @@ object KMeansNetworkWithProvenance extends App {
   
   //val kPoints: Array[Array[Double]] = data.takeSample(withReplacement = false, K, seed)
   data.takeSampleWithProvenance(withReplacement = false, K, seed)
-  val kPoints: Array[Array[Double]] = data.takeSampleWithProvenance(withReplacement = false, K, seed)
+  val kPoints: Array[Array[Double]] = data.takeSample(withReplacement = false, K, seed)
   var tempDist = Double.PositiveInfinity // used to measure convergence rate
   var iteration = 1
   
