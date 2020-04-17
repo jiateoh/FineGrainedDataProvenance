@@ -49,7 +49,10 @@ object StudentInfo {
                                                (pair._1, moving_average)
                                              })
     
-    val out = average_age_by_grade.collect()
+    //val out = average_age_by_grade.collect()
+    //out.foreach(println)
+    val out = average_age_by_grade.collectWithProvenance()
+    println("((Grade, Age), Provenance)")
     out.foreach(println)
     
     // REMOVED: print out the result for debugging purpose
