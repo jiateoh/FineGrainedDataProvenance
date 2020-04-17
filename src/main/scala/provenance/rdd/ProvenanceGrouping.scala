@@ -36,23 +36,26 @@ class ProvenanceGrouping[T](data: Iterable[ProvenanceRow[T]]) extends Traversabl
   
   override def seq: TraversableOnce[T] = this
   
+  /** EVERYTHING BELOW THIS LINE IS CURRENTLY UNSUPPORTED AND ACTS AS A FALLBACK TO THE
+    * UNDERLYING TRAVERSABLE */
   // Functions considered unsupported w.r.t. provenance
-  override def foreach[U](f: T => U): Unit = ???
+  override def foreach[U](f: T => U): Unit = values.foreach(f)
   
-  override def forall(p: T => Boolean): Boolean = ???
+  override def forall(p: T => Boolean): Boolean = values.forall(p)
   
-  override def exists(p: T => Boolean): Boolean = ???
+  override def exists(p: T => Boolean): Boolean = values.exists(p)
   
   // Would need an Option-equivalent with provenance
-  override def find(p: T => Boolean): Option[T] = ???
+  override def find(p: T => Boolean): Option[T] = values.find(p)
   
-  override def copyToArray[B >: T](xs: Array[B], start: Int, len: Int): Unit = ???
+  override def copyToArray[B >: T](xs: Array[B], start: Int, len: Int): Unit =
+    values.copyToArray(xs, start, len)
   
-  override def toTraversable: Traversable[T] = ???
+  override def toTraversable: Traversable[T] = values
   
-  override def isTraversableAgain: Boolean = ???
+  override def isTraversableAgain: Boolean = values.isTraversableAgain
   
-  override def toStream: Stream[T] = ???
+  override def toStream: Stream[T] = values.toStream
   
-  override def toIterator: Iterator[T] = ???
+  override def toIterator: Iterator[T] = values.toIterator
 }
