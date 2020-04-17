@@ -1,6 +1,7 @@
 package examples.bigtest
 
 import org.apache.spark.{SparkConf, SparkContext}
+import sparkwrapper.SparkContextWithDP
 
 /**
   * Created by malig on 3/27/18.
@@ -31,7 +32,8 @@ object AirportTransit {
                       " , ,-0A0,00A0,")
     
     val startTime = System.currentTimeMillis();
-    val sc = new SparkContext(conf)
+    val _sc = new SparkContext(conf)
+    val sc = new SparkContextWithDP(_sc)
     for (i <- 0 to data1.length - 1) {
       try {
         

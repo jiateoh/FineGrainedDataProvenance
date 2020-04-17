@@ -1,6 +1,7 @@
 package examples.bigtest
 
 import org.apache.spark.{SparkConf, SparkContext}
+import sparkwrapper.SparkContextWithDP
 
 /**
   * Created by malig on 3/27/18.
@@ -38,7 +39,8 @@ object CommuteType {
                       "")
     
     val startTime = System.currentTimeMillis();
-    val sc = new SparkContext(conf)
+    val _sc = new SparkContext(conf)
+    val sc = new SparkContextWithDP(_sc)
     for(i <- 0 to data1.length-1){
       try{
         val trips = sc.parallelize(Array(data1(i)))
@@ -108,36 +110,3 @@ object CommuteType {
     
   }
 }
-
-/**
-  *
-  * map1>","
-map3>","
-filter2>"",""
-map5>"1" , 2, "1"
-reduceByKey4> {1,2,3,4}
-K_BOUND>2
-DAG >reduceByKey4-map5:map5-join:join-map1,filter2:filter2-map3
-   val logFile = "hdfs://scai01.cs.ucla.edu:9000/clash/datasets/bigsift/"
-   val trip = logFile + "trips/*"
-   val zip = logFile + "zipcode/*"
-   val locations = sc.textFile(zip).sample(false, 1)
-  locations.count()
-  val trips = sc.textFile(trip).sample(false, 1)
-   val j_trips = trips.map { s => val cols = s.split(","); (cols(1), (cols(3).toInt / cols(4).toInt))}
-val j_locations = locations.map { s => val cols = s.split(","); (cols(0), cols(1))}.filter(s => s._2.equals("34"))
-  val joined = j_trips.join(j_locations)
-  joined.map { s => if (s._2._1 > 40) {  ("car", 1) } else if (s._2._1 > 15) { ("public", 1) } else { ("onfoot", 1) }} .reduceByKey(_ + _).count()
-collect.foreach(println)
-     val logFile = "hdfs://scai01.cs.ucla.edu:9000/clash/datasets/bigsift/"
-   val trip = logFile + "trips/*"
-   val zip = logFile + "zipcode/*"
-   val locations = sc.textFile(zip).zipWithIndex().filter(v => v._2 < 100).map(s=> s._1)
-  locations.count()
-  val trips = sc.textFile(trip).zipWithIndex().filter(v => v._2 < 1*320000000).map(s=> s._1)
-   val j_trips = trips.map { s => val cols = s.split(","); (cols(1), (cols(3).toInt / cols(4).toInt))}
-val j_locations = locations.map { s => val cols = s.split(","); (cols(0), cols(1))}.filter(s => s._2.equals("34"))
-  val joined = j_trips.join(j_locations)
-  joined.map { s => if (s._2._1 > 40) {  ("car", 1) } else if (s._2._1 > 15) { ("public", 1) } else { ("onfoot", 1) }} .reduceByKey(_ + _).count()
-  *
-  **/*/*/
