@@ -8,6 +8,8 @@ import provenance.rdd.{FlatProvenanceDefaultRDD, ProvenanceRDD}
 import symbolicprimitives.Utils
 import trackers.{BaseTracker, RoaringBitmapTracker, Trackers}
 
+import scala.reflect.ClassTag
+
 /**
   * Created by malig on 12/3/19.
   */
@@ -19,6 +21,8 @@ class SparkContextWithDP(sc: SparkContext) {
 //  val provType = conf.get("provenance.type", "bitmap")
 //  Provenance.printDebug(s"Setting provenance type to $provType", "")
 //  Provenance.setProvenance(provType)
+
+  
   
   def textFile(filepath: String): WrappedRDD[String] = {
     val rdd = sc.textFile(filepath)
@@ -39,6 +43,14 @@ class SparkContextWithDP(sc: SparkContext) {
     new FlatProvenanceDefaultRDD[String](tracked_rdd)
   }
   
+  /* TODO: Support 2nd argument for numparallelism.
+  *   This is currently implemented on the ProvenanceRDD API, not the Tracker one. (Uses pairs)*/
+  def parallelize[T: ClassTag](seq: Seq[T]): ProvenanceRDD[T] = {
+    val rdd = sc.parallelize(seq)
+    val provCreatorFn = Provenance.provenanceFactory.create _
+    val tracked_rdd = rdd.zipWithUniqueId().mapValues(provCreatorFn)
+    new FlatProvenanceDefaultRDD[T](tracked_rdd)
+  }
   
   
 }
