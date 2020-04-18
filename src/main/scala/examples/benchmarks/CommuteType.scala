@@ -1,4 +1,4 @@
-package examples.bigtest
+package examples.benchmarks
 
 import org.apache.spark.{SparkConf, SparkContext}
 import sparkwrapper.SparkContextWithDP
