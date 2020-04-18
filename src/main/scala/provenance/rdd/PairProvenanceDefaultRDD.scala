@@ -1,5 +1,7 @@
 package provenance.rdd
 
+import java.nio.ByteBuffer
+
 import org.apache.spark.rdd.RDD
 import org.apache.spark.serializer.Serializer
 import org.apache.spark.{HashPartitioner, Partitioner, SparkEnv}
@@ -254,6 +256,25 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])
   
   def groupByKeyNaive(): PairProvenanceDefaultRDD[K, Iterable[V]] = {
     groupByKeyNaive(defaultPartitioner)
+  }
+  
+  override def aggregateByKey[U: ClassTag](zeroValue: U, partitioner: Partitioner)
+                                          (seqOp: (U, V) => U,
+                                           combOp: (U, U) => U): PairProvenanceRDD[K,U] = {
+
+    // Serialize the zero value to a byte array so that we can get a new clone of it on each key
+    val zeroBuffer = SparkEnv.get.serializer.newInstance().serialize(zeroValue)
+    val zeroArray = new Array[Byte](zeroBuffer.limit)
+    zeroBuffer.get(zeroArray)
+    
+    lazy val cachedSerializer = SparkEnv.get.serializer.newInstance()
+    val createZero = () => cachedSerializer.deserialize[U](ByteBuffer.wrap(zeroArray))
+    
+    // We will clean the combiner closure later in `combineByKey`
+    val cleanedSeqOp = seqOp // TODO: clean closure
+    // rdd.context.clean(seqOp)
+    combineByKeyWithClassTag[U]((v: V) => cleanedSeqOp(createZero(), v),
+                                cleanedSeqOp, combOp, partitioner)
   }
   
   /** Join two RDDs while maintaining the key-key lineage. This operation is currently only

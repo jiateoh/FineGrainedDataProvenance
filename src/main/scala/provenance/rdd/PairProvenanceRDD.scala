@@ -46,6 +46,19 @@ trait PairProvenanceRDD[K, V] extends ProvenanceRDD[(K, V)] {
     groupByKey(defaultPartitioner)
   }
   
+  def aggregateByKey[U: ClassTag](zeroValue: U, partitioner: Partitioner)(seqOp: (U, V) => U,
+                                                                          combOp: (U, U) => U): PairProvenanceRDD[K, U]
+  
+  def aggregateByKey[U: ClassTag](zeroValue: U, numPartitions: Int)(seqOp: (U, V) => U,
+                                                                    combOp: (U, U) => U):PairProvenanceRDD[K, U] = {
+    aggregateByKey(zeroValue, new HashPartitioner(numPartitions))(seqOp, combOp)
+  }
+  
+  def aggregateByKey[U: ClassTag](zeroValue: U)(seqOp: (U, V) => U,
+                                                combOp: (U, U) => U): PairProvenanceRDD[K, U] = {
+    aggregateByKey(zeroValue, defaultPartitioner)(seqOp, combOp)
+  }
+  
   def join[W](other: PairProvenanceDefaultRDD[K, W],
               partitioner: Partitioner = defaultPartitioner
              ): PairProvenanceRDD[K, (V, W)]
