@@ -1,4 +1,4 @@
-package airport
+package examples.benchmarks.generators
 
 import java.io.File
 
@@ -76,47 +76,3 @@ object AirportTransitDataGenerator {
   }
 
 }
-
-
-/*
-For Spark Shell
-
-
-
-import scala.util.Random
-
- def addTime(arr: String, fl: Float) : String = {
-    val arr_min = arr.split(":")(0).toInt*60 + arr.split(":")(1).toInt
-    val dep_min = (arr_min + fl*60).toInt
-    val hours = dep_min/60 % 24
-    val min = dep_min % 60
-    return hours.toInt+":"+min.toInt
-
-  }
-  def getAirportCode(): String ={
-    val arr = Array("LAX" , "SFO" , "JFK" , "ORD" , "MDW" , "SEA" , "SJC" , "BNA" , "LGA" , "DAL" , "FTW" , "PHX" , "BUR" , "JAX" , "ATL" , "MNN" , "KOX",
-                    "OAK" , "RNO" , "ANC" , "MIA" , "MCO" , "BOS" , "DTW" , "MSP" , "EWR" , "ROC" , "SYR" , "CLE" , "PDX" , "PHL" , "PVD" , "HOU" , "SLC",
-                    "MSN" , "MKE" , "LHR" , "LHE" , "IST" , "ISB" , "RYD" , "DBX" , "ADU" , "FRK"  , "FRN" , "IRN" , "JAP" , "SUL" , "POL" , "PUP" , "SYX",
-                    "MLB" , "PRT" , "MNA" , "MUX" , "MLA" , "SPB" , "MOS" , "CAR" , "CUZ" , "RDJ" , "SPO" , "OCA" , "LBG" , "BUB" , "LAK" , "LUT" , "XYK" ,
-                    "ZUT" , "AUZ" , "AUX" , "ZUN" , "ZXA" , "NPW" , "NBA" , "NVM" , "PNA" , "EWQ" , "QWS" , "QRD"  , "LAS" , "NOW" , "WER" , "WRT" , "WPO")
-
-    val one = Random.nextInt(arr.length)
-    arr(one)
-  }
-       val logFile = "hdfs://scai01.cs.ucla.edu:9000//clash/datasets/bigsift/airport20"
-       val partitions = 32
-       val dataper = 20000000
-      sc.parallelize(Seq[Int]() , partitions).mapPartitions { _ =>
-        (1 to dataper).map{_ =>
-          val airportcode = getAirportCode()
-          val date = (Random.nextInt(12)+1).toString +"/" + Random.nextInt(31).toString + "/" +  (Random.nextInt(8)+10).toString
-          val passid = (Random.nextInt(8)+10).toString +(Random.nextInt(8)+10).toString +(Random.nextInt(8)+10).toString
-          val arrival = (Random.nextInt(24)).toString + ":" + (Random.nextInt(60)).toString
-          val transit:Float = (Random.nextInt(4)+1).toFloat/2f
-          val dep  = addTime(arrival, transit)
-
-          s"""$date,$passid,$arrival,$dep,$airportcode"""
-        }.iterator}.saveAsTextFile(logFile)
-
-
-*/

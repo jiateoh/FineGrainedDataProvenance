@@ -1,4 +1,4 @@
-package examples.benchmarks
+package examples.benchmarks.generators
 
 import org.apache.spark.{SparkConf, SparkContext}
 
