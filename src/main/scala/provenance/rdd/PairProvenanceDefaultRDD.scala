@@ -6,25 +6,27 @@ import org.apache.spark.{HashPartitioner, Partitioner, SparkEnv}
 import provenance.data.InfluenceMarker._
 import provenance.data.{InfluenceMarker, Provenance}
 import symbolicprimitives.{SymBase, Utils}
+import java.nio.ByteBuffer
 
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
-class  PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])
-                                    (implicit val kct: ClassTag[K],
-                                     implicit val vct: ClassTag[V])
-  extends BaseProvenanceRDD[(K, V)](rdd) with PairProvenanceRDD[K,V] {
+class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
+    implicit val kct: ClassTag[K],
+    implicit val vct: ClassTag[V])
+    extends BaseProvenanceRDD[(K, V)](rdd)
+    with PairProvenanceRDD[K, V] {
 
   override def defaultPartitioner: Partitioner =
     org.apache.spark.Partitioner.defaultPartitioner(rdd)
 
-  private def flatRDD: RDD[ProvenanceRow[(K,V)]] = {
+  private def flatRDD: RDD[ProvenanceRow[(K, V)]] = {
     rdd.map({
       case (k, (v, prov)) => ((k, v), prov)
     })
   }
 
-  private def flatProvenanceRDD: FlatProvenanceDefaultRDD[(K,V)] = {
+  private def flatProvenanceRDD: FlatProvenanceDefaultRDD[(K, V)] = {
     FlatProvenanceDefaultRDD
       .pairToFlat(this)
   }
@@ -33,26 +35,33 @@ class  PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])
     new FlatProvenanceDefaultRDD[V](rdd.values)
   }
 
-  override def map[U : ClassTag](f: ((K, V)) => U ,enableUDFAwareProv: Boolean = true): FlatProvenanceDefaultRDD[U] = {
+  override def map[U: ClassTag](
+      f: ((K, V)) => U,
+      enableUDFAwareProv: Boolean = true): FlatProvenanceDefaultRDD[U] = {
     // TODO: possible optimization if result is still a pair rdd?
     new FlatProvenanceDefaultRDD(rdd.map({
       case (k, (v, prov)) => (f((k, v)), prov)
     }))
   }
 
-  override def mapValues[U :ClassTag](f: V => U,enableUDFAwareProv: Boolean = true): PairProvenanceDefaultRDD[K, U] = {
+  override def mapValues[U: ClassTag](
+      f: V => U,
+      enableUDFAwareProv: Boolean = true): PairProvenanceDefaultRDD[K, U] = {
     new PairProvenanceDefaultRDD(rdd.mapValues({
-      case (v, prov) => Utils.computeOneToOneUDF(f,(v,prov),enableUDFAwareProv)
+      case (v, prov) =>
+        Utils.computeOneToOneUDF(f, (v, prov), enableUDFAwareProv)
     }))
   }
 
-  override def flatMap[U: ClassTag](f: ((K, V)) => TraversableOnce[U] ,enableUDFAwareProv: Boolean = true): FlatProvenanceDefaultRDD[U] = {
+  override def flatMap[U: ClassTag](
+      f: ((K, V)) => TraversableOnce[U],
+      enableUDFAwareProv: Boolean = true): FlatProvenanceDefaultRDD[U] = {
     // TODO: possible optimization if result is still a pair rdd?
     new FlatProvenanceDefaultRDD(rdd.flatMap({
-          // TODO this might be slow, one optimization is to have a classTag on the return type and
-          // check that ahead of time before creating the UDF
+      // TODO this might be slow, one optimization is to have a classTag on the return type and
+      // check that ahead of time before creating the UDF
       case (k, (v, prov)) => {
-       Utils.computeOneToManyUDF(f, ((k,v),prov) , enableUDFAwareProv)
+        Utils.computeOneToManyUDF(f, ((k, v), prov), enableUDFAwareProv)
       }
     }))
   }
@@ -82,9 +91,10 @@ class  PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])
 //                       (implicit ord: Ordering[(K, V)]): ProvenanceRDD[(K, V)
 //  ] = map(x => (x, null)).reduceByKey((x, _) => x, numPartitions).map(_._1)
 //
- override def collect(): Array[(K, V)] = flatProvenanceRDD.collect()
+  override def collect(): Array[(K, V)] = flatProvenanceRDD.collect()
 //
-  override def collectWithProvenance(): Array[((K, V), Provenance)] = flatProvenanceRDD.collectWithProvenance()
+  override def collectWithProvenance(): Array[((K, V), Provenance)] =
+    flatProvenanceRDD.collectWithProvenance()
 
 //  override def take(num: Int): Array[(K, V)] = flatProvenanceRDD.take(num)
 //
@@ -102,47 +112,62 @@ class  PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])
 //    * constructed only once per partition+key.
 //    */
 
-  def mergeWithInfluence(prov:Provenance, prov_other:Provenance, infl:InfluenceMarker): Provenance = {
-    infl match {
-      case InfluenceMarker.right => prov_other
-      case InfluenceMarker.left => prov
-      case InfluenceMarker.both => prov.merge(prov_other)
-    }
-  }
+
+  /**
+    * [Gulzar]
+    * Ugly implementation of this combiner method. Following are the assumptions:
+    *   1. UDFAwareProvenance is enabled by default
+    *      Will only be performed when both input and output of UDF is SYM*Object
+    *      if enabled, the influence function will be disabled
+    *   2. Influence function will only work when UDFAwareProvenance is disabled.
+    *
+    *   Our modified create Combiner method (Defined in Utils) create a combiner
+    *   object that contains the Combined output, the most influential source value
+    *   (random value if influential function is not given), and prov of most
+    *   influence/logical lineage.
+    *
+    *   CombinerWithInfluence --> ( (C , V), Prov)
+    *
+    * */
+
   override def combineByKeyWithClassTag[C](
-                                     createCombiner: V => C,
-                                     mergeValue: (C, V) => C,
-                                     mergeCombiners: (C, C) => C,
-                                     partitioner: Partitioner = defaultPartitioner,
-                                     mapSideCombine: Boolean = true,
-                                     serializer: Serializer = null,
-                                     inflFunctionCC:Option[(C,C) => InfluenceMarker] = None,
-                                     inflFunctionCV:Option[(C,V) => InfluenceMarker] = None)(implicit ct: ClassTag[C]): PairProvenanceDefaultRDD[K, C] = {
+      createCombiner: V => C,
+      mergeValue: (C, V) => C,
+      mergeCombiners: (C, C) => C,
+      partitioner: Partitioner = defaultPartitioner,
+      mapSideCombine: Boolean = true,
+      serializer: Serializer = null,
+      enableUDFAwareProv: Boolean = true,
+      inflFunction: Option[(V, V) => InfluenceMarker] = None)(
+      implicit ct: ClassTag[C]): PairProvenanceDefaultRDD[K, C] = {
     // Based on ShuffledRDD implementation for serializer
     val resultSerializer =
       serializer
 
     val createProvCombiner =
       (valueRow: ProvenanceRow[V]) =>
-        (createCombiner(valueRow._1),
-          valueRow._2.cloneProvenance()
-        )
-    val mergeProvValue = (combinerRow: ProvenanceRow[C], valueRow: ProvenanceRow[V]) => {
-      ( mergeValue(combinerRow._1, valueRow._1),
-        mergeWithInfluence(combinerRow._2, valueRow._2,
-          inflFunctionCV.getOrElse((c:C,v:V) => InfluenceMarker.both)(combinerRow._1, valueRow._1))
+        Utils.createCombinerForReduce(createCombiner,valueRow._1,valueRow._2.cloneProvenance(),enableUDFAwareProv)
 
-      )
-    }
-    val mergeProvCombiners = (combinerRow1: ProvenanceRow[C], combinerRow2: ProvenanceRow[C]) => {
-      ( mergeCombiners(combinerRow1._1, combinerRow2._1),
-        mergeWithInfluence(combinerRow1._2, combinerRow2._2,
-          inflFunctionCC.getOrElse((c:C,v:C) => InfluenceMarker.both)(combinerRow1._1, combinerRow2._1))
-      )
-    }
+    val mergeProvValue =
+      (combinerRow: ProvenanceRow[CombinerWithInfluence[C,V]], valueRow: ProvenanceRow[V]) => {
+        Utils.computeCombinerWithValueUDF(mergeValue,
+                                 combinerRow,
+                                 valueRow,
+                                 enableUDFAwareProv,
+                                 inflFunction)
+      }
+
+    val mergeProvCombiners =
+      (combinerRow1: ProvenanceRow[CombinerWithInfluence[C,V]], combinerRow2: ProvenanceRow[CombinerWithInfluence[C,V]]) => {
+        Utils.computeCombinerWithCombinerUDF[C,V](mergeCombiners,
+                                 combinerRow1,
+                                 combinerRow2,
+                                 enableUDFAwareProv,
+                                 inflFunction)
+      }
 
     new PairProvenanceDefaultRDD[K, C](
-      rdd.combineByKeyWithClassTag[ProvenanceRow[C]](
+      rdd.combineByKeyWithClassTag[ProvenanceRow[CombinerWithInfluence[C,V]]](
         // init: create a new 'tracker' instance that we can reuse for all values in the key.
         // TODO existing bug: cloning provenance is expensive and should be done lazily...
         createProvCombiner,
@@ -151,8 +176,33 @@ class  PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])
         partitioner,
         mapSideCombine,
         resultSerializer
-        ))
+      ).map(row => (row._1 , (row._2._1._1, row._2._2)))
+    )
   }
+
+ /**
+   * Moving from jteoh branch
+   *
+   * */
+ override def aggregateByKey[U: ClassTag](zeroValue: U, partitioner: Partitioner)
+                                         (seqOp: (U, V) => U,
+                                          combOp: (U, U) => U): PairProvenanceRDD[K,U] = {
+
+   // Serialize the zero value to a byte array so that we can get a new clone of it on each key
+   val zeroBuffer = SparkEnv.get.serializer.newInstance().serialize(zeroValue)
+   val zeroArray = new Array[Byte](zeroBuffer.limit)
+   zeroBuffer.get(zeroArray)
+
+   lazy val cachedSerializer = SparkEnv.get.serializer.newInstance()
+   val createZero = () => cachedSerializer.deserialize[U](ByteBuffer.wrap(zeroArray))
+
+   // We will clean the combiner closure later in `combineByKey`
+   val cleanedSeqOp = seqOp // TODO: clean closure
+   // rdd.context.clean(seqOp)
+   combineByKeyWithClassTag[U]((v: V) => cleanedSeqOp(createZero(), v),
+     cleanedSeqOp, combOp, partitioner)
+ }
+
 
   // END: Additional Spark-supported reduceByKey APIs
 

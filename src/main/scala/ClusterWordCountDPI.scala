@@ -17,7 +17,7 @@ object ClusterWordCountDPI {
     val input = sc.textFile(args.headOption.getOrElse("file.log"))
     val count = input.flatMap(s => s.split(' '))
                 .map(s => (s,1))
-                .reduceByKey(_ + _)//.filter(s => s._1.getValue().contains("ali"))
+                .reduceByKey(_ + _ )//.filter(s => s._1.getValue().contains("ali"))
                 //.collect()
                 //.take(100)
                 .count()

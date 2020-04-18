@@ -9,9 +9,10 @@ trait Provenance extends Serializable {
   
   /** Returns number of provenance IDs. */
   def count: Int
-  
+
   /** Returns estimate in serialization size, experimental. */
   def estimateSize: Long
+
 }
 
 object Provenance {

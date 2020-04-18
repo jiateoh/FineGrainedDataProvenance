@@ -148,16 +148,16 @@ object MathSym {
 
   /** @group abs */
   def abs(x: SymFloat): SymFloat =
-    new SymFloat(Math.abs(x.getValue()), x.getProvenance())
+     SymFloat(Math.abs(x.getValue()), x.getProvenance())
 
   /** @group abs */
   def abs(x: SymDouble): SymDouble =
-    new SymDouble(Math.abs(x.getValue()), x.getProvenance())
+     SymDouble(Math.abs(x.getValue()), x.getProvenance())
 
   /** @group minmax */
   def max(x: SymInt, y: SymInt): SymInt = {
-    if (Math.max(x.getValue(), y.getValue()) == x.getValue()) return x
-    else return y
+    if (Math.max(x.getValue(), y.getValue()) == x.getValue())  x
+    else  y
   }
 
   /** @group minmax */
@@ -165,20 +165,20 @@ object MathSym {
 
   /** @group minmax */
   def max(x: SymFloat, y: SymFloat): SymFloat = {
-    if (Math.max(x.getValue(), y.getValue()) == x.getValue()) return x
+    if (Math.max(x.getValue(), y.getValue()) == x.getValue())  x
     else return y
   }
 
   /** @group minmax */
   def max(x: SymDouble, y: SymDouble): SymDouble = {
-    if (Math.max(x.getValue(), y.getValue()) == x.getValue()) return x
-    else return y
+    if (Math.max(x.getValue(), y.getValue()) == x.getValue())  x
+    else  y
   }
 
   /** @group minmax */
   def min(x: SymInt, y: SymInt): SymInt = {
-    if (Math.min(x.getValue(), y.getValue()) == x.getValue()) return x
-    else return y
+    if (Math.min(x.getValue(), y.getValue()) == x.getValue())  x
+    else  y
   }
 
   /** @group minmax */
@@ -186,7 +186,7 @@ object MathSym {
 
   /** @group minmax */
   def min(x: SymFloat, y: SymFloat): SymFloat = {
-    if (Math.min(x.getValue(), y.getValue()) == x.getValue()) return x
+    if (Math.min(x.getValue(), y.getValue()) == x.getValue())  x
     else return y
   }
 

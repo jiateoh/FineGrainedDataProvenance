@@ -6,17 +6,12 @@ import provenance.data.Provenance
   * Created by malig on 4/25/19.
   */
 
-case class SymFloat(i: Float, prov:Provenance) {
+case class SymFloat(value: Float, p:Provenance) extends SymBase(p){
 
-  private var value: Float = i
 
   // TODO: Implement the influence/rank function here
   def mergeProvenance(prov_other : Provenance): Provenance = {
     prov.merge(prov_other)
-  }
-
-  def getProvenance(): Provenance ={
-    prov
   }
 
   def getValue(): Float = {

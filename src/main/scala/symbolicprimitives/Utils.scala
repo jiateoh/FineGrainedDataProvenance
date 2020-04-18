@@ -2,47 +2,53 @@ package symbolicprimitives
 
 import org.apache.spark.rdd.RDD
 import org.roaringbitmap.RoaringBitmap
-import provenance.data.DummyProvenance
-import provenance.rdd.ProvenanceRow
+import provenance.data.{DummyProvenance, InfluenceMarker, Provenance}
+import provenance.data.InfluenceMarker.InfluenceMarker
+import provenance.rdd.{ CombinerWithInfluence, ProvenanceRow}
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
+import scala.collection.parallel.Combiner
 import scala.reflect.ClassTag
 
 /**
   * Created by malig on 5/3/19.
   */
-
 object PackIntIntoLong {
   private final val RIGHT: Long = 0xFFFFFFFFL
 
-  def apply(left: Int, right: Int): Long = left.toLong << 32 | right & 0xFFFFFFFFL
+  def apply(left: Int, right: Int): Long =
+    left.toLong << 32 | right & 0xFFFFFFFFL
 
-  def getLeft(value: Long): Int = (value >>> 32).toInt // >>> operator 0-fills from left
+  def getLeft(value: Long): Int =
+    (value >>> 32).toInt // >>> operator 0-fills from left
 
   def getRight(value: Long): Int = (value & RIGHT).toInt
 }
 
-
 object Utils {
 
-  def print(s:String): Unit ={
+  def print(s: String): Unit = {
     println("\n" + s)
   }
 
-  private var zipped_input_RDD : RDD[(String,Long)] = null;
-  def setInputZip(rdd: RDD[(String,Long)]): RDD[(String,Long)] ={
+  private var zipped_input_RDD: RDD[(String, Long)] = null;
+  def setInputZip(rdd: RDD[(String, Long)]): RDD[(String, Long)] = {
     zipped_input_RDD = rdd
     rdd
   }
 
-  def retrieveProvenance(rr: RoaringBitmap): RDD[String] ={
-    val rdd = zipped_input_RDD.filter(s => rr.contains(s._2.asInstanceOf[Int])).map(s => s._1)
+  def retrieveProvenance(rr: RoaringBitmap): RDD[String] = {
+    val rdd = zipped_input_RDD
+      .filter(s => rr.contains(s._2.asInstanceOf[Int]))
+      .map(s => s._1)
     rdd.collect().foreach(println)
     rdd
   }
 
-  def computeOneToOneUDF[T,U](f: T => U , input:ProvenanceRow[T] , udfAware : Boolean): ProvenanceRow[U] ={
+  def computeOneToOneUDF[T, U](f: T => U,
+                               input: ProvenanceRow[T],
+                               udfAware: Boolean): ProvenanceRow[U] = {
     input._1 match {
       case r: SymBase =>
         if (!udfAware) {
@@ -53,51 +59,161 @@ object Utils {
           out match {
             case o: SymBase =>
               (out, o.getProvenance())
-            case a => (a,input._2)
+            case a =>
+              (a, input._2)
           }
         }
       case r =>
         (f(input._1), input._2)
-     }
+    }
   }
 
-  def computeOneToManyUDF[T,U](f: T => TraversableOnce[U] , input:ProvenanceRow[T] , udfAware : Boolean): TraversableOnce[ProvenanceRow[U]] ={
+  def computeOneToManyUDF[T, U](
+      f: T => TraversableOnce[U],
+      input: ProvenanceRow[T],
+      udfAware: Boolean): TraversableOnce[ProvenanceRow[U]] = {
     input._1 match {
       case r: SymBase =>
         if (!udfAware) {
           r.setProvenance(DummyProvenance.create()) // Let sym objects use a dummy provenance
-          f(input._1).map((_,input._2))
+          f(input._1).map((_, input._2))
         } else {
-          f(input._1).map{
-                out => out match {
-                  case o: SymBase =>
-                    (out, o.getProvenance())
-                  case a => (a, input._2)
-                }
+          f(input._1).map { out =>
+            out match {
+              case o: SymBase =>
+                (out, o.getProvenance())
+              case a => (a, input._2)
+            }
           }
         }
       case r =>
-        f(r).map((_,input._2))
+        f(r).map((_, input._2))
     }
   }
+
+  /** Takes in two provenance rows and returns the one that is selected by the Marker.
+    * V here is the source value which has the most inlfuence on the combinerd output
+    * It is not the combined output [Gulzar] */
+  private def mergeWithInfluence[V](prov: ProvenanceRow[V],
+                                 prov_other: ProvenanceRow[V],
+                                 infl: InfluenceMarker): ProvenanceRow[V] = {
+    infl match {
+      case InfluenceMarker.right => prov_other
+      case InfluenceMarker.left  => prov
+      case InfluenceMarker.both  => (prov._1 , prov._2.merge(prov_other._2))
+    }
+  }
+
+
+  /**
+  * Combined combiner with a value and rank the provenance based on the influence function if given
+  * Also check if UDFAwareProvenance is enabled
+  */
+  def computeCombinerWithValueUDF[C, V](f: (C, V) => C,
+                               combiner: ProvenanceRow[CombinerWithInfluence[C,V]],
+                               value: ProvenanceRow[V],
+                               udfAware: Boolean,
+                               inflFunction: Option[(V, V) => InfluenceMarker] =
+                                 None): ProvenanceRow[CombinerWithInfluence[C,V]] = {
+    (value._1, combiner._1._1) match {
+      case (v: SymBase, c: SymBase) =>
+        if (!udfAware) {
+
+          v.setProvenance(DummyProvenance.create()) // Let sym objects use a dummy provenance
+          c.setProvenance(DummyProvenance.create()) // Let sym objects use a dummy provenance
+          val combiner_influence  = (combiner._1._2 , combiner._2)
+          val  (infl_value, prov) =  mergeWithInfluence(combiner_influence,value , inflFunction.getOrElse((c: V, v: V) =>
+              InfluenceMarker.both)(combiner._1._2, value._1))
+          ( (f(combiner._1._1, value._1), infl_value ) ,prov )
+
+        } else {
+
+          val out = f(combiner._1._1, value._1)
+          out match {
+            case o: SymBase =>
+              ( ( out, value._1),  o.getProvenance())
+            case a =>
+              val combiner_influence  = (combiner._1._2 , combiner._2)
+              val  (infl_value, prov) =  mergeWithInfluence(combiner_influence,value , InfluenceMarker.both)
+              ( (a, infl_value ) ,prov )
+          }
+        }
+
+      case r =>
+        val combiner_influence  = (combiner._1._2 , combiner._2)
+        val  (infl_value, prov) =  mergeWithInfluence(combiner_influence,value , inflFunction.getOrElse((c: V, v: V) =>
+          InfluenceMarker.both)(combiner._1._2, value._1))
+        ( (f(combiner._1._1, value._1), infl_value ) , if(udfAware) DummyProvenance.create() else prov )
+    }
+  }
+
+
+  /**
+    * Combined combiner with another combiner and rank the provenance based on the influence function if given
+    * otherwise merges the provenance.
+    *
+    * Also check if UDFAwareProvenance is enabled
+    * */
+  def computeCombinerWithCombinerUDF[C, V](f: (C, C) => C,
+                                        combiner1: ProvenanceRow[CombinerWithInfluence[C,V]],
+                                        combiner2: ProvenanceRow[CombinerWithInfluence[C,V]],
+                                        udfAware: Boolean,
+                                        inflFunction: Option[(V, V) => InfluenceMarker] =
+                                        None): ProvenanceRow[CombinerWithInfluence[C,V]] = {
+    (combiner1._1._1 , combiner2._1._1) match {
+      case (v: SymBase, c: SymBase) =>
+        if (!udfAware) {
+
+          v.setProvenance(DummyProvenance.create()) // Let sym objects use a dummy provenance
+          c.setProvenance(DummyProvenance.create()) // Let sym objects use a dummy provenance
+          val  (infl_value, prov) =  mergeWithInfluence((combiner1._1._2 , combiner1._2),(combiner2._1._2 , combiner2._2), inflFunction.getOrElse((c: V, v: V) =>
+            InfluenceMarker.both)(combiner1._1._2, combiner2._1._2))
+          ( (f(combiner1._1._1 , combiner2._1._1), infl_value ) ,prov )
+
+        } else {
+
+          val out = f(combiner1._1._1 , combiner2._1._1)
+          out match {
+            case o: SymBase =>
+              ( ( out, combiner1._1._2),  o.getProvenance()) // Using a random influence V.
+            case a =>
+              val  (infl_value, prov) =  mergeWithInfluence((combiner1._1._2 , combiner1._2),(combiner2._1._2 , combiner2._2), InfluenceMarker.both)
+              ( (a, infl_value ) ,prov )
+          }
+        }
+
+      case r =>
+        val  (infl_value, prov) =  mergeWithInfluence((combiner1._1._2 , combiner1._2),(combiner2._1._2 , combiner2._2) , inflFunction.getOrElse((c: V, v: V) =>
+          InfluenceMarker.both)(combiner1._1._2, combiner2._1._2))
+        ( (f(combiner1._1._1 , combiner2._1._1), infl_value ) ,if(udfAware) DummyProvenance.create() else prov  )
+    }
+  }
+
+  def createCombinerForReduce[V,C](createCombiner: V => C , value: V, prov: Provenance, udfAware:Boolean):
+  ProvenanceRow[CombinerWithInfluence[C,V]] =
+    ((createCombiner(value) , value), prov)
+
 
   // A regular expression to match classes of the internal Spark API's
   // that we want to skip when finding the call site of a method.
   private val SPARK_CORE_CLASS_REGEX =
-  """^org\.apache\.spark(\.api\.java)?(\.util)?(\.rdd)?(\.broadcast)?\.[A-Z]""".r
+    """^org\.apache\.spark(\.api\.java)?(\.util)?(\.rdd)?(\.broadcast)?\.[A-Z]""".r
   private val SYMEx_CORE_REGEX = """^main\.symbolicprimitives.*""".r
 
   /** Default filtering function for finding call sites using `getCallSite`. */
   private def sparkInternalExclusionFunction(className: String): Boolean = {
     val SCALA_CORE_CLASS_PREFIX = "scala"
-    val isSparkClass = SPARK_CORE_CLASS_REGEX.findFirstIn(className).isDefined ||
+    val isSparkClass = SPARK_CORE_CLASS_REGEX
+      .findFirstIn(className)
+      .isDefined ||
       SYMEx_CORE_REGEX.findFirstIn(className).isDefined
     val isScalaClass = className.startsWith(SCALA_CORE_CLASS_PREFIX)
     // If the class is a Spark internal class or a Scala class, then exclude.
     isSparkClass || isScalaClass
   }
 
-  def getCallSite(skipClass: String => Boolean = sparkInternalExclusionFunction): CallSite = {
+  def getCallSite(skipClass: String => Boolean = sparkInternalExclusionFunction)
+    : CallSite = {
     var lastSparkMethod = "<unknown>"
     var firstUserFile = "<unknown>"
     var firstUserLine = 0
@@ -106,7 +222,7 @@ object Utils {
 
     Thread.currentThread.getStackTrace().foreach { ste: StackTraceElement =>
       if (ste != null && ste.getMethodName != null
-        && !ste.getMethodName.contains("getStackTrace")) {
+          && !ste.getMethodName.contains("getStackTrace")) {
         if (insideSpark) {
           if (skipClass(ste.getClassName)) {
             lastSparkMethod = if (ste.getMethodName == "<init>") {
@@ -139,8 +255,8 @@ object Utils {
         // server.
         "Spark JDBC Server Query"
       } else {
-       // s"$lastSparkMethod at $firstUserFile:$firstUserLine"
-         s"$firstUserFile:$firstUserLine"
+        // s"$lastSparkMethod at $firstUserFile:$firstUserLine"
+        s"$firstUserFile:$firstUserLine"
 
       }
     val longForm = callStack.take(callStackDepth).mkString("\n")

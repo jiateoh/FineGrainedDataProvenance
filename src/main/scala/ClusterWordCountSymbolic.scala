@@ -19,9 +19,15 @@ object ClusterWordCountSymbolic {
     val input = sc.textFileProv(("file_num.log"))
     val count =
       input.map(s => (s.split(',')(0),s.split(',')(1).toInt))
-      .reduceByKey(_+_, (a,b) => if(a > b) InfluenceMarker.left else InfluenceMarker.right )
+      .reduceByKey((a,b) => if(b > 300) a+b else a , enableUDFAwareProv = false)
+
+
+    //(a,b) => if(a > b) InfluenceMarker.left else InfluenceMarker.right)
     val arr = count.collectWithProvenance()
       arr.foreach(println)
 
+    println("-" * 40)
+    input.collect().foreach(println)
+    println("-" * 40)
   }
 }

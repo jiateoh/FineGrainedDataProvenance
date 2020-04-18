@@ -42,6 +42,10 @@ case class SymInt(value: Int, p : Provenance) extends SymBase(p) {
     return value
   }
 
+   def toSymString : SymString = {
+    SymString(value.toString , p)
+  }
+
   /**
     * Overloading operators from here onwards
     */
@@ -102,14 +106,14 @@ case class SymInt(value: Int, p : Provenance) extends SymBase(p) {
     new SymInt(value / x.getValue(), mergeProvenance(x.getProvenance()))
   }
 
+  def %(x: Int): SymInt = {
+    SymInt(value % x, p)
+  }
   /**
     * Operators not supported yet
     */
 
   def ==(x: Int): Boolean = value == x
-
-  override def toString: String =
-    value.toString + s""" (Provenance Bitmap: ${prov})"""
 
   def toByte: Byte = value.toByte
 
@@ -307,8 +311,6 @@ case class SymInt(value: Int, p : Provenance) extends SymBase(p) {
   def %(x: Short): Int = value % x
 
   def %(x: Char): Int = value % x
-
-  def %(x: Int): Int = value % x
 
   def %(x: Long): Long = value % x
 
