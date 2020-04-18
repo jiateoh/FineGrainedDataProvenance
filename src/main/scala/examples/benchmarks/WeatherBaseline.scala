@@ -11,7 +11,7 @@ import provenance.rdd.ProvenanceRDD._
   * https://github.com/maligulzar/BigSiftUI/blob/master/src/weather/WeatherAnalysis.scala
   * Logging and other miscellaneous bigsift-specific functionality is removed.
   */
-object Weather {
+object WeatherBaseline {
   
   def main(args: Array[String]): Unit = {
     //set up spark configuration

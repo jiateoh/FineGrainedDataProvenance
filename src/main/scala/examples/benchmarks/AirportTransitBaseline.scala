@@ -10,7 +10,7 @@ import sparkwrapper.SparkContextWithDP
   * https://github.com/maligulzar/BigSiftUI/blob/master/src/airport/AirportTransitAnalysis.scala
   * Logging and other miscellaneous bigsift-specific functionality is removed.
   */
-object AirportTransit {
+object AirportTransitBaseline {
   def main(args: Array[String]): Unit = {
     //set up spark configuration
     val sparkConf = new SparkConf()

@@ -8,7 +8,7 @@ import sparkwrapper.SparkContextWithDP
   * Copied from BigTest by jteoh on 4/15/20: https://github
   * .com/maligulzar/BigTest/blob/JPF-integrated/benchmarks/src/subject/programs/CommuteType.scala
   */
-object CommuteType {
+object CommuteTypeBaseline {
   
   def main(args: Array[String]) {
     val conf = new SparkConf()

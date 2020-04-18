@@ -11,7 +11,7 @@ import sparkwrapper.SparkContextWithDP
   * https://github.com/maligulzar/BigSiftUI/blob/master/src/benchmarks/studentdataanalysis/StudentInfo.scala
   * Logging and other miscellaneous bigsift-specific functionality is removed.
   */
-object StudentInfo {
+object StudentInfoBaseline {
   
   def main(args: Array[String]): Unit = {
     val sparkConf = new SparkConf()
