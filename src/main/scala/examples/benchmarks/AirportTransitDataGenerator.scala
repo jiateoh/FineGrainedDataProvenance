@@ -8,6 +8,7 @@ import scala.util.Random
 
 /**
   * Created by ali on 7/20/17.
+  * Copied from BigSiftUI by jteoh on 4/17/20
   */
 object AirportTransitDataGenerator {
 
