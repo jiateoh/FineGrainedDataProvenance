@@ -283,9 +283,13 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])
   override def join[W](other: PairProvenanceDefaultRDD[K, W],
                        partitioner: Partitioner = defaultPartitioner
              ): PairProvenanceDefaultRDD[K, (V, W)] = {
-    assert(rdd.firstSource == other.rdd.firstSource,
-           "Provenance-based join is currently supported only for RDDs originating from the same " +
-             "input data (e.g. self-join): " + s"${rdd.firstSource} vs. ${other.rdd.firstSource}")
+    if(rdd.firstSource != other.rdd.firstSource) {
+      println("=====\nSEVERE WARNING: Provenance-based join is currently supported only for RDDs " +
+                "originating from the same " +
+             "input data (e.g. self-join): " + s"\n${rdd.firstSource}\nvs.\n${other.rdd
+                                                                                  .firstSource}\n=====")
+    }
+    
     
     val result: RDD[(K, ProvenanceRow[(V, W)])] = rdd.cogroup(other.rdd).flatMapValues((pair: (Iterable[(V, Provenance)], Iterable[(W, Provenance)])) =>
            for (thisRow <- pair._1.iterator; otherRow <- pair._2.iterator)
