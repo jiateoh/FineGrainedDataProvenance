@@ -19,7 +19,7 @@ object AirportTransitBaseline {
     if (args.length < 2) {
       sparkConf.setMaster("local[6]")
       sparkConf.setAppName("Airport Transit Time Analysis").set("spark.executor.memory", "2g")
-      logFile = "airportdata"
+      logFile = "datasets/airportdata"
     } else {
       logFile = args(0)
       local = args(1).toInt

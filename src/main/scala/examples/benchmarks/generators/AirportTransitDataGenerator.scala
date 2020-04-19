@@ -40,7 +40,7 @@ object AirportTransitDataGenerator {
       sparkConf.setMaster("local[6]")
       sparkConf.setAppName("TermVector_LineageDD").set("spark.executor.memory", "2g")
       // logFile =  "/Users/malig/workspace/git/BigSiftUI/airportdata"
-      logFile =  "airportdata"
+      logFile =  "datasets/airportdata"
     }else{
       logFile = "hdfs://scai01.cs.ucla.edu:9000//clash/datasets/bigsift/weather"
       logFile = args(3)

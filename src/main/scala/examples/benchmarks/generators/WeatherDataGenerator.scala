@@ -18,7 +18,7 @@ object WeatherDataGenerator {
     if(args.length < 2) {
       sparkConf.setMaster("local[6]")
       sparkConf.setAppName("TermVector_LineageDD")//.set("spark.executor.memory", "2g")
-      logFile =  "weatherdata"
+      logFile =  "datasets/weatherdata"
       //logFile = args(0)
       partitions = 1
       dataper = 50

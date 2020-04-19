@@ -19,7 +19,7 @@ object StudentInfoBaseline {
     if(args.isEmpty){
       sparkConf.setAppName("Student_Info")
                .set("spark.executor.memory", "2g").setMaster("local[6]")
-      logFile = "student.txt"
+      logFile = "datasets/student.txt"
       // https://github.com/maligulzar/BigSiftUI/blob/master/src/benchmarks/studentdataanalysis/datageneration/student.txt
     }else{
       logFile = args(0)

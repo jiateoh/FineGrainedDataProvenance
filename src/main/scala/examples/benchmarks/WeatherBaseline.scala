@@ -21,7 +21,7 @@ object WeatherBaseline {
     if (args.length < 2) {
       sparkConf.setMaster("local[6]")
       sparkConf.setAppName("Weather Analysis").set("spark.executor.memory", "2g")
-      logFile = "weatherdata"
+      logFile = "datasets/weatherdata"
     } else {
       logFile = args(0)
       local = args(1).toInt
