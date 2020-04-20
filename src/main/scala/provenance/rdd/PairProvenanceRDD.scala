@@ -19,7 +19,7 @@ trait PairProvenanceRDD[K, V] extends ProvenanceRDD[(K, V)] {
   def values: BaseProvenanceRDD[V]
   def mapValues[U: ClassTag](
       f: V => U,
-      enableUDFAwareProv: Boolean = true): PairProvenanceRDD[K, U]
+      enableUDFAwareProv: Option[Boolean] = None): PairProvenanceRDD[K, U]
 
   def combineByKeyWithClassTag[C](
       createCombiner: V => C,
@@ -28,13 +28,13 @@ trait PairProvenanceRDD[K, V] extends ProvenanceRDD[(K, V)] {
       partitioner: Partitioner = defaultPartitioner,
       mapSideCombine: Boolean = true,
       serializer: Serializer = null,
-      enableUDFAwareProv: Boolean = true,
+      enableUDFAwareProv: Option[Boolean] = None,
       inflFunction: Option[(V, V) => InfluenceMarker] = None)(
       implicit ct: ClassTag[C]): PairProvenanceRDD[K, C]
 
   def reduceByKey(
       func: (V, V) => V,
-      enableUDFAwareProv: Boolean = true): PairProvenanceRDD[K, V] = {
+      enableUDFAwareProv: Option[Boolean] = None): PairProvenanceRDD[K, V] = {
     combineByKeyWithClassTag(identity,
                              func,
                              func,
@@ -42,40 +42,57 @@ trait PairProvenanceRDD[K, V] extends ProvenanceRDD[(K, V)] {
   }
 
   /** If Influence function is given then the UDFAwareProvenance is un-applicable */
-
   def reduceByKey(
       func: (V, V) => V,
       influence: (V, V) => InfluenceMarker): PairProvenanceRDD[K, V] = {
     combineByKeyWithClassTag(identity,
                              func,
                              func,
-                             enableUDFAwareProv = false,
+                             enableUDFAwareProv = Some(false),
                              inflFunction = Some(influence))(vct)
   }
+  
+  // Note: enableUDFAwareProv is not provided a default value here because of
+  // currying/overloading issues in Scala that conflict with the other aggregateByKey methods.
+  // The default value should be None.
   def reduceByKey(func: (V, V) => V,
-                  numPartitions: Int): PairProvenanceRDD[K, V] = {
-    reduceByKey(new HashPartitioner(numPartitions), func)
+                  numPartitions: Int,
+                  enableUDFAwareProv: Option[Boolean]): PairProvenanceRDD[K, V] = {
+    reduceByKey(new HashPartitioner(numPartitions), func, enableUDFAwareProv)
   }
+  
+  // Note: enableUDFAwareProv is not provided a default value here because of
+  // currying/overloading issues in Scala that conflict with the other aggregateByKey methods.
+  // The default value should be None.
   def reduceByKey(partitioner: Partitioner,
-                  func: (V, V) => V): PairProvenanceRDD[K, V] = {
-    combineByKeyWithClassTag[V]((v: V) => v, func, func, partitioner)(vct)
+                  func: (V, V) => V, enableUDFAwareProv: Option[Boolean]): PairProvenanceRDD[K, V] = {
+    combineByKeyWithClassTag[V]((v: V) => v, func, func, partitioner,
+                                enableUDFAwareProv = enableUDFAwareProv)(vct)
   }
 
   /**
     * Moving from jason's branch
     * */
-
+  // Note: enableUDFAwareProv is not provided a default value here because of
+  // currying/overloading issues in Scala that conflict with the other aggregateByKey methods.
+  // The default value should be None.
   def aggregateByKey[U: ClassTag](zeroValue: U, partitioner: Partitioner)(seqOp: (U, V) => U,
-                                                                          combOp: (U, U) => U): PairProvenanceRDD[K, U]
-
+                                                                          combOp: (U, U) => U,
+                                                                          enableUDFAwareProv: Option[Boolean]): PairProvenanceRDD[K, U]
+  
+  // Note: enableUDFAwareProv is not provided a default value here because of
+  // currying/overloading issues in Scala that conflict with the other aggregateByKey methods.
+  // The default value should be None.
   def aggregateByKey[U: ClassTag](zeroValue: U, numPartitions: Int)(seqOp: (U, V) => U,
-                                                                    combOp: (U, U) => U):PairProvenanceRDD[K, U] = {
-    aggregateByKey(zeroValue, new HashPartitioner(numPartitions))(seqOp, combOp)
+                                                                    combOp: (U, U) => U,
+                                                                    enableUDFAwareProv: Option[Boolean]):PairProvenanceRDD[K, U] = {
+    aggregateByKey(zeroValue, new HashPartitioner(numPartitions))(seqOp, combOp, enableUDFAwareProv)
   }
 
   def aggregateByKey[U: ClassTag](zeroValue: U)(seqOp: (U, V) => U,
-                                                combOp: (U, U) => U): PairProvenanceRDD[K, U] = {
-    aggregateByKey(zeroValue, defaultPartitioner)(seqOp, combOp)
+                                                combOp: (U, U) => U,
+                                                enableUDFAwareProv: Option[Boolean] = None): PairProvenanceRDD[K, U] = {
+    aggregateByKey(zeroValue, defaultPartitioner)(seqOp, combOp, enableUDFAwareProv)
   }
 //
 //  def groupByKey(partitioner: Partitioner): PairProvenanceRDD[K, ProvenanceGrouping[V]]

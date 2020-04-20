@@ -37,7 +37,7 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
 
   override def map[U: ClassTag](
       f: ((K, V)) => U,
-      enableUDFAwareProv: Boolean = true): FlatProvenanceDefaultRDD[U] = {
+      enableUDFAwareProv: Option[Boolean] = None): FlatProvenanceDefaultRDD[U] = {
     // TODO: possible optimization if result is still a pair rdd?
     new FlatProvenanceDefaultRDD(rdd.map({
       case (k, (v, prov)) => (f((k, v)), prov)
@@ -46,22 +46,24 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
 
   override def mapValues[U: ClassTag](
       f: V => U,
-      enableUDFAwareProv: Boolean = true): PairProvenanceDefaultRDD[K, U] = {
+      enableUDFAwareProv: Option[Boolean] = None): PairProvenanceDefaultRDD[K, U] = {
+    val _enableUDFAwareProv = Utils.getUDFAwareEnabledValue(enableUDFAwareProv)
     new PairProvenanceDefaultRDD(rdd.mapValues({
       case (v, prov) =>
-        Utils.computeOneToOneUDF(f, (v, prov), enableUDFAwareProv)
+        Utils.computeOneToOneUDF(f, (v, prov), _enableUDFAwareProv)
     }))
   }
 
   override def flatMap[U: ClassTag](
       f: ((K, V)) => TraversableOnce[U],
-      enableUDFAwareProv: Boolean = true): FlatProvenanceDefaultRDD[U] = {
+      enableUDFAwareProv: Option[Boolean] = None): FlatProvenanceDefaultRDD[U] = {
+    val _enableUDFAwareProv = Utils.getUDFAwareEnabledValue(enableUDFAwareProv)
     // TODO: possible optimization if result is still a pair rdd?
     new FlatProvenanceDefaultRDD(rdd.flatMap({
       // TODO this might be slow, one optimization is to have a classTag on the return type and
       // check that ahead of time before creating the UDF
       case (k, (v, prov)) => {
-        Utils.computeOneToManyUDF(f, ((k, v), prov), enableUDFAwareProv)
+        Utils.computeOneToManyUDF(f, ((k, v), prov), _enableUDFAwareProv)
       }
     }))
   }
@@ -137,33 +139,33 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
       partitioner: Partitioner = defaultPartitioner,
       mapSideCombine: Boolean = true,
       serializer: Serializer = null,
-      enableUDFAwareProv: Boolean = true,
+      enableUDFAwareProv: Option[Boolean] = None,
       inflFunction: Option[(V, V) => InfluenceMarker] = None)(
       implicit ct: ClassTag[C]): PairProvenanceDefaultRDD[K, C] = {
+    val _enableUDFAwareProv = Utils.getUDFAwareEnabledValue(enableUDFAwareProv)
     // Based on ShuffledRDD implementation for serializer
-    val resultSerializer =
-      serializer
+    val resultSerializer = serializer
 
     val createProvCombiner =
       (valueRow: ProvenanceRow[V]) =>
-        Utils.createCombinerForReduce(createCombiner,valueRow._1,valueRow._2.cloneProvenance(),enableUDFAwareProv)
+        Utils.createCombinerForReduce(createCombiner,valueRow._1,valueRow._2.cloneProvenance(), _enableUDFAwareProv)
 
     val mergeProvValue =
       (combinerRow: ProvenanceRow[CombinerWithInfluence[C,V]], valueRow: ProvenanceRow[V]) => {
         Utils.computeCombinerWithValueUDF(mergeValue,
-                                 combinerRow,
-                                 valueRow,
-                                 enableUDFAwareProv,
-                                 inflFunction)
+                                          combinerRow,
+                                          valueRow,
+                                          _enableUDFAwareProv,
+                                          inflFunction)
       }
 
     val mergeProvCombiners =
       (combinerRow1: ProvenanceRow[CombinerWithInfluence[C,V]], combinerRow2: ProvenanceRow[CombinerWithInfluence[C,V]]) => {
         Utils.computeCombinerWithCombinerUDF[C,V](mergeCombiners,
-                                 combinerRow1,
-                                 combinerRow2,
-                                 enableUDFAwareProv,
-                                 inflFunction)
+                                                  combinerRow1,
+                                                  combinerRow2,
+                                                  _enableUDFAwareProv,
+                                                  inflFunction)
       }
 
     new PairProvenanceDefaultRDD[K, C](
@@ -186,7 +188,8 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
    * */
  override def aggregateByKey[U: ClassTag](zeroValue: U, partitioner: Partitioner)
                                          (seqOp: (U, V) => U,
-                                          combOp: (U, U) => U): PairProvenanceRDD[K,U] = {
+                                          combOp: (U, U) => U,
+                                          enableUDFAwareProv: Option[Boolean]): PairProvenanceRDD[K,U] = {
 
    // Serialize the zero value to a byte array so that we can get a new clone of it on each key
    val zeroBuffer = SparkEnv.get.serializer.newInstance().serialize(zeroValue)
@@ -200,7 +203,7 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
    val cleanedSeqOp = seqOp // TODO: clean closure
    // rdd.context.clean(seqOp)
    combineByKeyWithClassTag[U]((v: V) => cleanedSeqOp(createZero(), v),
-     cleanedSeqOp, combOp, partitioner)
+     cleanedSeqOp, combOp, partitioner, enableUDFAwareProv = enableUDFAwareProv)
  }
 
 

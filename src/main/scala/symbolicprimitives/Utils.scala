@@ -115,6 +115,15 @@ object Utils {
                                udfAware: Boolean,
                                inflFunction: Option[(V, V) => InfluenceMarker] =
                                  None): ProvenanceRow[CombinerWithInfluence[C,V]] = {
+    // Note: udfAware should be determined by now, as app-level wide configurations are not
+    // properly persisted in a distributed setting. In other words, this method is used at
+    // runtime rather than DAG building time, and the parameter should have been already
+    // determined earlier.
+    // TODO: optimization on provenance - if the output of f (ie, the combiner) is symbolic, we
+    //  can extract its provenance assuming udfAware is true. This is independent of input types.
+    // TODO: both input arguments can individually have their provenance disabled if necessary,
+    //  rather than simultaneously (e.g. if only one of V/C are symbolic, disable accordingly).
+    //  (this is only a performance improvement).
     (value._1, combiner._1._1) match {
       case (v: SymBase, c: SymBase) =>
         if (!udfAware) {
@@ -160,6 +169,15 @@ object Utils {
                                         udfAware: Boolean,
                                         inflFunction: Option[(V, V) => InfluenceMarker] =
                                         None): ProvenanceRow[CombinerWithInfluence[C,V]] = {
+    // Note: udfAware should be determined by now, as app-level wide configurations are not
+    // properly persisted in a distributed setting. In other words, this method is used at
+    // runtime rather than DAG building time, and the parameter should have been already
+    // determined earlier.
+    // TODO: optimization on provenance - if the output of f (ie, the combiner) is symbolic, we
+    //  can extract its provenance assuming udfAware is true. This is independent of input types.
+    // TODO: both input arguments can individually have their provenance disabled if necessary,
+    //  rather than simultaneously (e.g. if only one of the two are symbolic, disable accordingly).
+    //  (this is only a performance improvement).
     (combiner1._1._1 , combiner2._1._1) match {
       case (v: SymBase, c: SymBase) =>
         if (!udfAware) {
@@ -194,6 +212,20 @@ object Utils {
     ((createCombiner(value) , value), prov)
 
 
+  /** Default application configuration flag to determine whether or not to propogate row-level
+    * provenance when symbolic objects are used. */
+  private var defaultUDFAwareEnabled = false
+  
+  /** Application configuration flag to determine whether or not to propogate row-level
+    * provenance when symbolic objects are used. Defaults to internal variable if None. */
+  def getUDFAwareEnabledValue(opt: Option[Boolean]): Boolean = {
+    opt.getOrElse(defaultUDFAwareEnabled)
+  }
+  
+  def setUDFAwareDefaultValue(value: Boolean): Unit = {
+    defaultUDFAwareEnabled = value
+  }
+  
   // A regular expression to match classes of the internal Spark API's
   // that we want to skip when finding the call site of a method.
   private val SPARK_CORE_CLASS_REGEX =

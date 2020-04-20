@@ -9,9 +9,9 @@ import scala.util.Random
 
 /** Trait to ensure consistent base API between Pair and non-Pair */
 trait ProvenanceRDD[T] extends Serializable {
-  def map[U: ClassTag](f: T => U, enableUDFAwareProv: Boolean = true): ProvenanceRDD[U]
+  def map[U: ClassTag](f: T => U, enableUDFAwareProv: Option[Boolean] = None): ProvenanceRDD[U]
   
-  def flatMap[U:ClassTag](f: T => TraversableOnce[U] ,enableUDFAwareProv: Boolean = true): ProvenanceRDD[U]
+  def flatMap[U:ClassTag](f: T => TraversableOnce[U], enableUDFAwareProv: Option[Boolean] = None): ProvenanceRDD[U]
   
   def filter(f: T => Boolean): ProvenanceRDD[T]
 //

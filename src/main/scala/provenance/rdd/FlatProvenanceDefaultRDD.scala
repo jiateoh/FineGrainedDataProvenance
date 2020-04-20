@@ -11,17 +11,20 @@ class FlatProvenanceDefaultRDD[T: ClassTag](val rdd: RDD[ProvenanceRow[T]]) exte
   
   private def rddWithoutProvenance: RDD[T] = rdd.map(_._1)
   
-  override def map[U: ClassTag](f: T  => U , enableUDFAwareProv: Boolean = true): FlatProvenanceDefaultRDD[U] =
+  override def map[U: ClassTag](f: T  => U , enableUDFAwareProv: Option[Boolean] = None): FlatProvenanceDefaultRDD[U] = {
+    val _enableUDFAwareProv = Utils.getUDFAwareEnabledValue(enableUDFAwareProv)
     new FlatProvenanceDefaultRDD(rdd.map {
-      row => Utils.computeOneToOneUDF(f,row,enableUDFAwareProv)
+      row => Utils.computeOneToOneUDF(f, row, _enableUDFAwareProv)
     })
+  }
 
-  
-  override def flatMap[U  : ClassTag](f: T => TraversableOnce[U], enableUDFAwareProv: Boolean = true): FlatProvenanceDefaultRDD[U] = {
+  override def flatMap[U  : ClassTag](f: T => TraversableOnce[U],
+                                      enableUDFAwareProv: Option[Boolean] = None): FlatProvenanceDefaultRDD[U] = {
     new FlatProvenanceDefaultRDD(rdd.flatMap{
+      val _enableUDFAwareProv = Utils.getUDFAwareEnabledValue(enableUDFAwareProv)
       // TODO this might be slow, one optimization is to have a classTag on the return type and
       // check that ahead of time before creating the UDF
-      row => Utils.computeOneToManyUDF(f,row, enableUDFAwareProv)
+      row => Utils.computeOneToManyUDF(f,row, _enableUDFAwareProv)
 //        resultTraversable match {
 //          case provenanceGroup: ProvenanceGrouping[U] =>
 //            // TODO undo this as it's ignoring optimized provenance
