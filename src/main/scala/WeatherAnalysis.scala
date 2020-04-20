@@ -12,6 +12,8 @@ import symbolicprimitives.{MathSym, SymFloat, SymString}
   * Copied from BigSiftUI repo by jteoh on 4/16/20
   * https://github.com/maligulzar/BigSiftUI/blob/master/src/weather/WeatherAnalysis.scala
   * Logging and other miscellaneous bigsift-specific functionality is removed.
+  * This is an unofficial version of the Weather program - the ones used for evaluation can be
+  * found in the appropriate package.
   */
 object Weather {
 
@@ -30,10 +32,10 @@ object Weather {
     } //set up spark context
     val ctx = new SparkContext(sparkConf) //set up lineage context and start capture lineage
     val scdp = new SparkContextWithDP(ctx)
-    val input = scdp.textFileProv(logFile)
+    val input = scdp.textFileSymbolic(logFile)
 
 
-    val split = scdp.textFileProv("weather_data").flatMap { s =>
+    val split = scdp.textFileSymbolic("weather_data").flatMap { s =>
       val tokens = s.split(",")
       // finds the state for a zipcode
       var state = zipToState(tokens(0))

@@ -16,7 +16,7 @@ object ClusterWordCountSymbolic {
                     .getOrCreate()
     val sc = new SparkContextWithDP(spark.sparkContext)
 
-    val input = sc.textFileProv(("file_num.log"))
+    val input = sc.textFileSymbolic("file_num.log")
     val count =
       input.map(s => (s.split(',')(0),s.split(',')(1).toInt))
       .reduceByKey((a,b) => if(b > 300) a+b else a , enableUDFAwareProv = false)

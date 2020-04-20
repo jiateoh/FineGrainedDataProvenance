@@ -15,6 +15,8 @@ class SparkContextWithDP(sc: SparkContext) {
   def textFile(filepath: String): RDD[String] ={
     sc.textFile(filepath)
   }
+  
+  /** Text file with Symbolic strings (no provenance RDD) */
   def textFileUDFProv(filepath: String): RDD[SymString] = {
     val rdd = sc.textFile(filepath)
     // This needs to be called outside to ensure cluster usage works with the right factory
@@ -29,7 +31,14 @@ class SparkContextWithDP(sc: SparkContext) {
     tracked_rdd
   }
 
-  def textFileProv(filepath: String): ProvenanceRDD[SymString] = {
+  /** Text file with symbolic strings and provenance RDDs. */
+  def textFileSymbolic(filepath: String): ProvenanceRDD[SymString] = {
+    if(!Utils.getUDFAwareEnabledValue(None)) {
+      // TODO jteoh: we might be able to remove this warning if we determine at collect-time that
+      //  the output we are collecting is a symbolic type?
+      println("WARNING: Did you mean to enable UDF Aware provenance since you are using " +
+                "textFileSymbolic?")
+    }
     val rdd = sc.textFile(filepath)
     // This needs to be called outside to ensure cluster usage works with the right factory
     // Previously I used Provenance.create for a counter, but it's unreliable for cluster usage
@@ -41,5 +50,21 @@ class SparkContextWithDP(sc: SparkContext) {
           val prov = provCreatorFn(input._2)
           (SymString(input._1, prov), prov)}
     new FlatProvenanceDefaultRDD[SymString](tracked_rdd)
+  }
+  
+  /** Text file with provenance RDDs (but no symbolic strings) */
+  def textFileProv(filepath: String): ProvenanceRDD[String] = {
+    val rdd = sc.textFile(filepath)
+    // This needs to be called outside to ensure cluster usage works with the right factory
+    // Previously I used Provenance.create for a counter, but it's unreliable for cluster usage
+    val provCreatorFn = Provenance.provenanceFactory.create _
+    val tracked_rdd = Utils
+      .setInputZip(rdd.zipWithUniqueId())
+      .map{
+        input =>
+          val prov = provCreatorFn(input._2)
+          (input._1, prov)
+      }
+    new FlatProvenanceDefaultRDD[String](tracked_rdd)
   }
 }

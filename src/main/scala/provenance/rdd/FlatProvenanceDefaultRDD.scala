@@ -1,8 +1,8 @@
 package provenance.rdd
 
 import org.apache.spark.rdd.RDD
-import provenance.data.{DummyProvenance, Provenance}
-import symbolicprimitives.{SymBase, Utils}
+import provenance.data.Provenance
+import symbolicprimitives.Utils
 
 import scala.reflect.ClassTag
 
