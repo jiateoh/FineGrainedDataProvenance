@@ -298,22 +298,24 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
 //    groupByKeyNaive(defaultPartitioner)
 //  }
 
-//  /** Join two RDDs while maintaining the key-key lineage. This operation is currently only
-//    * supported for RDDs that possess the same base input RDD.
-//    */
-//  override def join[W](other: PairProvenanceDefaultRDD[K, W],
-//                       partitioner: Partitioner = defaultPartitioner
-//             ): PairProvenanceDefaultRDD[K, (V, W)] = {
-//    assert(rdd.firstSource == other.rdd.firstSource,
-//           "Provenance-based join is currently supported only for RDDs originating from the same " +
-//             "input data (e.g. self-join): " + s"${rdd.firstSource} vs. ${other.rdd.firstSource}")
-//
-//    val result: RDD[(K, ProvenanceRow[(V, W)])] = rdd.cogroup(other.rdd).flatMapValues((pair: (Iterable[(V, Provenance)], Iterable[(W, Provenance)])) =>
-//           for (thisRow <- pair._1.iterator; otherRow <- pair._2.iterator)
-//             // TODO: enhance this provenance precision somehow.
-//             // TODO: would it help to lazy merge if the two provenance objects are equivalent?
-//             yield ((thisRow._1, otherRow._1), thisRow._2.cloneProvenance().merge(otherRow._2))
-//                                                                                       )
-//    new PairProvenanceDefaultRDD(result)
-//  }
+  /** Join two RDDs while maintaining the key-key lineage. This operation is currently only
+    * supported for RDDs that possess the same base input RDD.
+    */
+  override def join[W](other: PairProvenanceDefaultRDD[K, W],
+                       partitioner: Partitioner = defaultPartitioner
+             ): PairProvenanceDefaultRDD[K, (V, W)] = {
+    if(rdd.firstSource != other.rdd.firstSource) {
+      println("=====\nSEVERE WARNING: Provenance-based join is currently supported only for RDDs " +
+                "originating from the same " +
+                "input data (e.g. self-join): " + s"\n${rdd.firstSource}\nvs.\n${other.rdd
+                                                                                      .firstSource}\n=====")
+    }
+    val result: RDD[(K, ProvenanceRow[(V, W)])] = rdd.cogroup(other.rdd).flatMapValues((pair: (Iterable[(V, Provenance)], Iterable[(W, Provenance)])) =>
+           for (thisRow <- pair._1.iterator; otherRow <- pair._2.iterator)
+             // TODO: enhance this provenance precision somehow.
+             // TODO: would it help to lazy merge if the two provenance objects are equivalent?
+             yield ((thisRow._1, otherRow._1), thisRow._2.cloneProvenance().merge(otherRow._2))
+                                                                                       )
+    new PairProvenanceDefaultRDD(result)
+  }
 }

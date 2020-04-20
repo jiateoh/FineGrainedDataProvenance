@@ -86,10 +86,10 @@ trait PairProvenanceRDD[K, V] extends ProvenanceRDD[(K, V)] {
 //    groupByKey(defaultPartitioner)
 //  }
 
-//  def join[W](other: PairProvenanceDefaultRDD[K, W],
-//              partitioner: Partitioner = defaultPartitioner
-//             ): PairProvenanceRDD[K, (V, W)]
-//
+  def join[W](other: PairProvenanceDefaultRDD[K, W],
+              partitioner: Partitioner = defaultPartitioner
+             ): PairProvenanceRDD[K, (V, W)]
+
 
   implicit class RDDWithDataSource(rdd: RDD[_]) {
     def firstSource: RDD[_] = {
