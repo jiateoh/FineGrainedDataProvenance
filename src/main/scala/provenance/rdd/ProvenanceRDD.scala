@@ -33,9 +33,9 @@ trait ProvenanceRDD[T] extends Serializable {
 //
   def collectWithProvenance(): Array[ProvenanceRow[T]]
 
-//  def take(num: Int): Array[T]
-//
-//  def takeWithProvenance(num: Int): Array[ProvenanceRow[T]]
+  def take(num: Int): Array[T]
+
+  def takeWithProvenance(num: Int): Array[ProvenanceRow[T]]
 //
 //  def takeSample(withReplacement: Boolean,
 //                 num: Int,

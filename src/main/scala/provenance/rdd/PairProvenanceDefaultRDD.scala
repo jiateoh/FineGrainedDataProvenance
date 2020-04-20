@@ -96,10 +96,10 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
   override def collectWithProvenance(): Array[((K, V), Provenance)] =
     flatProvenanceRDD.collectWithProvenance()
 
-//  override def take(num: Int): Array[(K, V)] = flatProvenanceRDD.take(num)
-//
-//  override def takeWithProvenance(num: Int): Array[((K, V), Provenance)] =
-//    flatProvenanceRDD.takeWithProvenance(num)
+  override def take(num: Int): Array[(K, V)] = flatProvenanceRDD.take(num)
+
+  override def takeWithProvenance(num: Int): Array[((K, V), Provenance)] =
+    flatProvenanceRDD.takeWithProvenance(num)
 //
 //  override def takeSample(withReplacement: Boolean, num: Int, seed: Long): Array[(K, V)] =
 //    flatProvenanceRDD.takeSample(withReplacement, num, seed)

@@ -57,6 +57,10 @@ class FlatProvenanceDefaultRDD[T: ClassTag](val rdd: RDD[ProvenanceRow[T]]) exte
   override def collect(): Array[T] = rddWithoutProvenance.collect()
 
   override def collectWithProvenance(): Array[ProvenanceRow[T]] = rdd.collect()
+  
+  override def take(num: Int): Array[T] = rddWithoutProvenance.take(num)
+  
+  override def takeWithProvenance(num: Int): Array[ProvenanceRow[T]] = rdd.take(num)
 
   override def filter(f: T => Boolean): ProvenanceRDD[T] =
     new FlatProvenanceDefaultRDD(rdd.filter(row => f(row._1)))
