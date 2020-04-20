@@ -130,8 +130,8 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
     *
     *   CombinerWithInfluence --> ( (C , V), Prov)
     *
+    * TODO if output type is symbolic, adjust provenance accordingly
     * */
-
   override def combineByKeyWithClassTag[C](
       createCombiner: V => C,
       mergeValue: (C, V) => C,

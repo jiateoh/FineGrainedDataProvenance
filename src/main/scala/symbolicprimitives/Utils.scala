@@ -46,49 +46,94 @@ object Utils {
     rdd
   }
 
+  /** Utility method to extract symbolic provenance from object to construct provenance row, if
+    * applicable. This method should not be used if udfAware is disabled! */
+  private def buildSymbolicProvenanceRow[T](in: T, rowProv: Provenance): ProvenanceRow[T] = {
+    // Might be worth looking into classtags to see if we can avoid this runtime check altogether
+    // and simply define methods beforehand.
+    in match {
+      case o: SymBase =>
+        (in, o.getProvenance())
+      case _ =>
+        (in, rowProv)
+    }
+  }
+  
   def computeOneToOneUDF[T, U](f: T => U,
                                input: ProvenanceRow[T],
                                udfAware: Boolean): ProvenanceRow[U] = {
-    input._1 match {
-      case r: SymBase =>
-        if (!udfAware) {
+    // Note: udfAware should be determined by now, as app-level wide configurations are not
+    // properly persisted in a distributed setting. In other words, this method is used at
+    // runtime rather than DAG building time, and the parameter should have been already
+    // determined earlier.
+    if(udfAware) {
+      buildSymbolicProvenanceRow(f(input._1), input._2)
+    } else {
+      input._1 match {
+        case r: SymBase =>
+          // Note: this is an optimization that must be done *before* calling f on the input.
           r.setProvenance(DummyProvenance.create()) // Let sym objects use a dummy provenance
-          (f(input._1), input._2) // use input provenance and pass it to next operator
-        } else {
-          val out = f(input._1)
-          out match {
-            case o: SymBase =>
-              (out, o.getProvenance())
-            case a =>
-              (a, input._2)
-          }
-        }
-      case r =>
-        (f(input._1), input._2)
+        case _ =>
+      }
+      (f(input._1), input._2) // use input provenance and pass it to next operator
     }
+//    input._1 match {
+//      case r: SymBase =>
+//        if (!udfAware) {
+//          // Note: this is an optimization that must be done *before* calling f on the input.
+//          r.setProvenance(DummyProvenance.create()) // Let sym objects use a dummy provenance
+//          (out, input._2) // use input provenance and pass it to next operator
+//        } else {
+//          buildSymbolicProvenanceRow(out, input._2)
+//        }
+//      case r => {
+//        if(!udfAware)
+//          (out, input._2)
+//        else {
+//          buildSymbolicProvenanceRow(out, input._2)
+//        }
+//      }
+//    }
   }
 
+  // TODO: Consider utilizing ProvenanceGrouping object??
   def computeOneToManyUDF[T, U](
       f: T => TraversableOnce[U],
       input: ProvenanceRow[T],
       udfAware: Boolean): TraversableOnce[ProvenanceRow[U]] = {
-    input._1 match {
-      case r: SymBase =>
-        if (!udfAware) {
+    // Note: udfAware should be determined by now, as app-level wide configurations are not
+    // properly persisted in a distributed setting. In other words, this method is used at
+    // runtime rather than DAG building time, and the parameter should have been already
+    // determined earlier.
+    if(udfAware) {
+      f(input._1).map(buildSymbolicProvenanceRow(_, input._2))
+    } else {
+      input._1 match {
+        case r: SymBase =>
+          // Note: this is an optimization that must be done *before* calling f on the input.
           r.setProvenance(DummyProvenance.create()) // Let sym objects use a dummy provenance
-          f(input._1).map((_, input._2))
-        } else {
-          f(input._1).map { out =>
-            out match {
-              case o: SymBase =>
-                (out, o.getProvenance())
-              case a => (a, input._2)
-            }
-          }
-        }
-      case r =>
-        f(r).map((_, input._2))
+        case _ =>
+      }
+      f(input._1).map((_, input._2)) // use input provenance and pass it to next operator
     }
+    
+//    input._1 match {
+//      case r: SymBase =>
+//        if (!udfAware) {
+//          r.setProvenance(DummyProvenance.create()) // Let sym objects use a dummy provenance
+//          f(input._1).map((_, input._2))
+//        } else {
+//          f(input._1).map { out =>
+//            out match {
+//              case o: SymBase =>
+//                (out, o.getProvenance())
+//              case a => (a, input._2)
+//            }
+//          }
+//        }
+//      case r =>
+//        f(r).map((_, input._2))
+//    }
   }
 
   /** Takes in two provenance rows and returns the one that is selected by the Marker.
