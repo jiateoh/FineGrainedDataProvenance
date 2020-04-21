@@ -59,7 +59,7 @@ object WeatherSymbolic {
     val deltaSnow = split.aggregateByKey(zero)(
       {case ((curMin , curMax), next) => (MathSym.min(curMin, next), MathSym.max(curMax, next))},
       {case ((minA, maxA), (minB, maxB)) =>(MathSym.min(minA, minB), MathSym.max(maxA, maxB))}
-      // If we didn't define this globally, we could override enableUDFAwareProv here
+      // If we didn't define udfAware flag globally, we could override enableUDFAwareProv here
       )
       .mapValues({ case (min, max) => max - min})
 
