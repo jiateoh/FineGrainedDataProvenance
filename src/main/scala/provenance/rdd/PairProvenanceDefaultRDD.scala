@@ -99,7 +99,7 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
     flatProvenanceRDD.collectWithProvenance()
 
   override def take(num: Int): Array[(K, V)] = flatProvenanceRDD.take(num)
-
+  
   override def takeWithProvenance(num: Int): Array[((K, V), Provenance)] =
     flatProvenanceRDD.takeWithProvenance(num)
 //
@@ -118,9 +118,10 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
   /**
     * [Gulzar]
     * Ugly implementation of this combiner method. Following are the assumptions:
-    *   1. UDFAwareProvenance is enabled by default
-    *      Will only be performed when both input and output of UDF is SYM*Object
-    *      if enabled, the influence function will be disabled
+    *   1. UDFAwareProvenance is disabled by default (see Utils.getUDFAwareEnabledValue)
+    *      Will only be performed when the output of UDF is SYM*Object and the flag is enabled.
+    *      if enabled, the influence function will be disabled (overridden) in favor of symbolic
+    *      object provenance.
     *   2. Influence function will only work when UDFAwareProvenance is disabled.
     *
     *   Our modified create Combiner method (Defined in Utils) create a combiner
@@ -145,13 +146,17 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
     val _enableUDFAwareProv = Utils.getUDFAwareEnabledValue(enableUDFAwareProv)
     // Based on ShuffledRDD implementation for serializer
     val resultSerializer = serializer
+    // shorthands for easier reference
+    type ValueRow = ProvenanceRow[V]
+    type CombinerRow = ProvenanceRow[CombinerWithInfluence[C,V]]
+    
 
-    val createProvCombiner =
-      (valueRow: ProvenanceRow[V]) =>
+    val createProvCombiner: ValueRow => CombinerRow =
+      (valueRow: ValueRow) =>
         Utils.createCombinerForReduce(createCombiner,valueRow._1,valueRow._2.cloneProvenance(), _enableUDFAwareProv)
 
-    val mergeProvValue =
-      (combinerRow: ProvenanceRow[CombinerWithInfluence[C,V]], valueRow: ProvenanceRow[V]) => {
+    val mergeProvValue: (CombinerRow, ValueRow) => (CombinerRow) =
+      (combinerRow: CombinerRow, valueRow: ValueRow) => {
         Utils.computeCombinerWithValueUDF(mergeValue,
                                           combinerRow,
                                           valueRow,
@@ -159,8 +164,8 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
                                           inflFunction)
       }
 
-    val mergeProvCombiners =
-      (combinerRow1: ProvenanceRow[CombinerWithInfluence[C,V]], combinerRow2: ProvenanceRow[CombinerWithInfluence[C,V]]) => {
+    val mergeProvCombiners: (CombinerRow, CombinerRow) => CombinerRow =
+      (combinerRow1: CombinerRow, combinerRow2: CombinerRow) => {
         Utils.computeCombinerWithCombinerUDF[C,V](mergeCombiners,
                                                   combinerRow1,
                                                   combinerRow2,
@@ -169,16 +174,22 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
       }
 
     new PairProvenanceDefaultRDD[K, C](
-      rdd.combineByKeyWithClassTag[ProvenanceRow[CombinerWithInfluence[C,V]]](
-        // init: create a new 'tracker' instance that we can reuse for all values in the key.
-        // TODO existing bug: cloning provenance is expensive and should be done lazily...
-        createProvCombiner,
-        mergeProvValue,
-        mergeProvCombiners,
-        partitioner,
-        mapSideCombine,
-        resultSerializer
-      ).map(row => (row._1 , (row._2._1._1, row._2._2)))
+      {
+        val combinerResult: RDD[(K, CombinerRow)] = rdd.combineByKeyWithClassTag[CombinerRow](
+          // init: create a new 'tracker' instance that we can reuse for all values in the key.
+          // TODO existing bug: cloning provenance is expensive and should be done lazily...
+          createProvCombiner,
+          mergeProvValue,
+          mergeProvCombiners,
+          partitioner,
+          mapSideCombine,
+          resultSerializer
+          )
+
+         // Key, combiner, provenance (the influence marker is not propagated yet)
+         //.map(row => (row._1 , (row._2._1._1, row._2._2)))
+         combinerResult.mapValues((row: CombinerRow) => (row._1._1, row._2))
+      }
     )
   }
 

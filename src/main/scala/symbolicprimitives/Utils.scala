@@ -200,7 +200,7 @@ object Utils {
         ( (f(combiner._1._1, value._1), infl_value ) , if(udfAware) DummyProvenance.create() else prov )
     }
   }
-
+  
 
   /**
     * Combined combiner with another combiner and rank the provenance based on the influence function if given
@@ -253,10 +253,11 @@ object Utils {
   }
 
   def createCombinerForReduce[V,C](createCombiner: V => C , value: V, prov: Provenance, udfAware:Boolean):
-  ProvenanceRow[CombinerWithInfluence[C,V]] =
+  ProvenanceRow[CombinerWithInfluence[C,V]] = {
     ((createCombiner(value) , value), prov)
-
-
+  }
+  
+  
   /** Default application configuration flag to determine whether or not to propogate row-level
     * provenance when symbolic objects are used. */
   private var defaultUDFAwareEnabled = false
