@@ -5,7 +5,7 @@ import provenance.data.Provenance
 /**
   * Created by malig on 4/25/19.
   */
-case class SymDouble(i: Double, prov: Provenance) {
+case class SymDouble(i: Double, p: Provenance) extends SymBase(p) {
 
   private val value: Double = i
 
@@ -13,11 +13,7 @@ case class SymDouble(i: Double, prov: Provenance) {
   def mergeProvenance(prov_other: Provenance): Provenance = {
     prov.merge(prov_other)
   }
-
-  def getProvenance(): Provenance = {
-    prov
-  }
-
+  
   def getValue(): Double = {
     return value
   }
