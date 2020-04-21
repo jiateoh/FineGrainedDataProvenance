@@ -17,6 +17,7 @@ object SymImplicits {
   implicit def symInt2String(s: SymInt): String = s.getValue().toString
   implicit def symFloat2String(s: SymFloat): String = s.getValue().toString
   implicit def symDouble2String(s: SymDouble): String = s.getValue().toString
+  implicit def symString2String(s: SymString): String = s.getValue().toString
 
   implicit def symInt2SymFloat(s: SymInt): SymFloat = new SymFloat(s.getValue() , s.getProvenance())
   implicit def symFloat2SymInt(s: SymFloat): SymInt = new SymInt(s.getValue().toInt , s.getProvenance())
