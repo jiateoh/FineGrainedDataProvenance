@@ -137,6 +137,11 @@ case class SymInt(value: Int, p : Provenance) extends SymBase(p) {
   def %(x: Int): SymInt = {
     SymInt(value % x, p)
   }
+  
+  // Implementing on a need-to-use basis
+  def toInt: SymInt = this
+  def toDouble: SymDouble = new SymDouble(value.toDouble, prov)
+  
   /**
     * Operators not supported yet
     */
@@ -149,13 +154,13 @@ case class SymInt(value: Int, p : Provenance) extends SymBase(p) {
 
   def toChar: Char = value.toChar
 
-  def toInt: Int = value.toInt
+  
 
   def toLong: Long = value.toLong
 
   def toFloat: Float = value.toFloat
 
-  def toDouble: Double = value.toDouble
+  //def toDouble: Double = value.toDouble
 
   def unary_~ : Int = value.unary_~
 
