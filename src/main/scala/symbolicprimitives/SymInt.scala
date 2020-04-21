@@ -24,9 +24,8 @@ object SymImplicits {
 
   implicit def symInt2SymFloat(s: SymInt): SymFloat = new SymFloat(s.getValue() , s.getProvenance())
   implicit def symFloat2SymInt(s: SymFloat): SymInt = new SymInt(s.getValue().toInt , s.getProvenance())
-  implicit def symFloat2SymDouble(s: SymFloat): String = new SymDouble(s.getValue().toDouble , s.getProvenance())
-  implicit def symInt2SymDouble(s: SymInt): String = new SymDouble(s.getValue().toDouble , s.getProvenance())
-
+  implicit def symFloat2SymDouble(s: SymFloat): SymDouble = new SymDouble(s.getValue().toDouble , s.getProvenance())
+  implicit def symInt2SymDouble(s: SymInt): SymDouble = new SymDouble(s.getValue().toDouble , s.getProvenance())
 }
 
 case class SymInt(value: Int, p : Provenance) extends SymBase(p) {
