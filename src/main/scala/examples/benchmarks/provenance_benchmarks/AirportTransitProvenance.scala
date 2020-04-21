@@ -43,26 +43,6 @@ object AirportTransitProvenance {
     out.collectWithProvenance().foreach(println)
   }
   
-  def fun (input: RDD[String] ): RDD[(((String, String), Int))] ={
-    val map = input.map { s =>
-      val tokens = s.split(",")
-      val arrival_hr = tokens(2).split(":")(0)
-      val diff = getDiff(tokens(2), tokens(3))
-      val airport = tokens(4)
-      ((airport, arrival_hr), diff)
-    }
-    val fil = map.filter { v =>
-      v._2 < 45
-    }
-    val out = fil.reduceByKey(_ + _)
-    out
-  }
-  
-  def failure(record: (Any, Int)): Boolean = {
-    record.asInstanceOf[Tuple2[Any, Int]]._2 < 0
-  }
-  
-  
   def getDiff(arr: String, dep: String): Int = {
     val arr_min = arr.split(":")(0).toInt * 60 + arr.split(":")(1).toInt
     val dep_min = dep.split(":")(0).toInt * 60 + dep.split(":")(1).toInt
