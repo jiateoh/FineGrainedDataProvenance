@@ -144,6 +144,8 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
       inflFunction: Option[(V, V) => InfluenceMarker] = None)(
       implicit ct: ClassTag[C]): PairProvenanceDefaultRDD[K, C] = {
     val _enableUDFAwareProv = Utils.getUDFAwareEnabledValue(enableUDFAwareProv)
+    assert(inflFunction.isEmpty || !_enableUDFAwareProv, "UDFAware Provenance " +
+      "should not be enabled if using influence functions")
     // Based on ShuffledRDD implementation for serializer
     val resultSerializer = serializer
     // shorthands for easier reference
@@ -200,8 +202,9 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
  override def aggregateByKey[U: ClassTag](zeroValue: U, partitioner: Partitioner)
                                          (seqOp: (U, V) => U,
                                           combOp: (U, U) => U,
-                                          enableUDFAwareProv: Option[Boolean]): PairProvenanceRDD[K,U] = {
-
+                                          enableUDFAwareProv: Option[Boolean],
+                                          inflFunction: Option[InfluenceFn[V]])
+ : PairProvenanceRDD[K,U] = {
    // Serialize the zero value to a byte array so that we can get a new clone of it on each key
    val zeroBuffer = SparkEnv.get.serializer.newInstance().serialize(zeroValue)
    val zeroArray = new Array[Byte](zeroBuffer.limit)
@@ -214,7 +217,8 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
    val cleanedSeqOp = seqOp // TODO: clean closure
    // rdd.context.clean(seqOp)
    combineByKeyWithClassTag[U]((v: V) => cleanedSeqOp(createZero(), v),
-     cleanedSeqOp, combOp, partitioner, enableUDFAwareProv = enableUDFAwareProv)
+     cleanedSeqOp, combOp, partitioner, enableUDFAwareProv = enableUDFAwareProv,
+                               inflFunction = inflFunction)
  }
 
 
