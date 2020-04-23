@@ -1,5 +1,6 @@
 package examples.benchmarks.symbolic_benchmarks
 
+import examples.benchmarks.AggregationFunctions
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 import sparkwrapper.SparkContextWithDP
@@ -41,7 +42,7 @@ object AirportTransitSymbolic {
       v._2 < 45
     }
     // TODO: define some sort of influence function
-    val out = fil.reduceByKey(_ + _)
+    val out = AggregationFunctions.sumByKey(fil)
     
     out.collectWithProvenance().foreach(println)
   }

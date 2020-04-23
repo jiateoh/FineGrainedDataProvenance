@@ -72,7 +72,7 @@ object CommuteTypeSymbolic {
       //  provenance using the symbolic approach. This benchmark is thus not properly supported.
       println("WARNING: Symbolic approach for Commute Type benchmark is not properly supported " +
                 "yet!")
-      joined
+      val types = joined
         .map { s =>
           // Checking if speed is < 25mi/hr
           if (s._2._1 > 40) {
@@ -83,8 +83,8 @@ object CommuteTypeSymbolic {
             ("onfoot", 1)
           }
         }
-        .reduceByKey(_ + _)
-        .collectWithProvenance()
+        val out = types.reduceByKey(_ + _)
+        out.collectWithProvenance()
         .foreach(println)
     }
     catch {

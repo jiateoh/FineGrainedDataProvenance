@@ -50,7 +50,7 @@ object WeatherProvenance {
     //      val delta = s._2.max - s._2.min
     //      (s._1, delta)
     //    }
-    val deltaSnow = AggregationFunctions.minMaxDelta(split)
+    val deltaSnow = AggregationFunctions.minMaxDeltaByKey(split)
     
     
     val out = deltaSnow.collectWithProvenance()

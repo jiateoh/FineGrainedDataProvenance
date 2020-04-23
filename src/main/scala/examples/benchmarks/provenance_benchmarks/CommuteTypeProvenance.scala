@@ -1,5 +1,6 @@
 package examples.benchmarks.provenance_benchmarks
 
+import examples.benchmarks.AggregationFunctions
 import org.apache.spark.{SparkConf, SparkContext}
 import sparkwrapper.SparkContextWithDP
 import provenance.rdd.ProvenanceRDD._
@@ -62,7 +63,7 @@ object CommuteTypeProvenance {
                         //.filter(s => s._2.equals("Palms"))
                         //.filter(s => s._1.equals("90034"))
       val joined = trips.join(locations)
-      joined
+      val types = joined
         .map { s =>
           // Checking if speed is < 25mi/hr
           if (s._2._1 > 40) {
@@ -73,8 +74,9 @@ object CommuteTypeProvenance {
             ("onfoot", 1)
           }
         }
-        .reduceByKey(_ + _)
-        .collectWithProvenance()
+        
+        val out = AggregationFunctions.sumByKey(types)// types.reduceByKey(_ + _)
+        out.collectWithProvenance()
         .foreach(println)
     }
     catch {

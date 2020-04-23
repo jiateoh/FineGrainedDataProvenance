@@ -1,5 +1,6 @@
 package examples.benchmarks.provenance_benchmarks
 
+import examples.benchmarks.AggregationFunctions
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 import sparkwrapper.SparkContextWithDP
@@ -38,7 +39,7 @@ object AirportTransitProvenance {
     val fil = map.filter { v =>
       v._2 < 45
     }
-    val out = fil.reduceByKey(_ + _)
+    val out = AggregationFunctions.sumByKey(fil)
     
     out.collectWithProvenance().foreach(println)
   }
