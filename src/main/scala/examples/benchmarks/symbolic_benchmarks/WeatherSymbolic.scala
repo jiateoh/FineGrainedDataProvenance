@@ -1,9 +1,9 @@
 package examples.benchmarks.symbolic_benchmarks
 
 import org.apache.spark.{SparkConf, SparkContext}
-import provenance.data.Provenance
 import sparkwrapper.SparkContextWithDP
 import symbolicprimitives.{MathSym, SymFloat, SymString, Utils}
+import symbolicprimitives.SymImplicits._
 
 /**
   * Created by ali on 2/25/17.
@@ -53,10 +53,7 @@ object WeatherSymbolic {
       ).iterator
     }
 
-    val zero = (SymFloat(Float.MaxValue, Provenance.provenanceFactory.create(-1)),
-      SymFloat(Float.MinValue ,Provenance.provenanceFactory.create(-1)))
-
-    val deltaSnow = split.aggregateByKey(zero)(
+    val deltaSnow = split.aggregateByKey[(SymFloat, SymFloat)]((Float.MaxValue, Float.MinValue))(
       {case ((curMin , curMax), next) => (MathSym.min(curMin, next), MathSym.max(curMax, next))},
       {case ((minA, maxA), (minB, maxB)) =>(MathSym.min(minA, minB), MathSym.max(maxA, maxB))}
       // If we didn't define udfAware flag globally, we could override enableUDFAwareProv here

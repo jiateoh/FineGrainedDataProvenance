@@ -6,6 +6,7 @@ import provenance.data.Provenance
 import sparkwrapper.SparkContextWithDP
 import provenance.rdd.ProvenanceRDD._
 import symbolicprimitives.{MathSym, SymFloat, SymString}
+import symbolicprimitives.SymImplicits._
 
 /**
   * Created by ali on 2/25/17.
@@ -52,10 +53,7 @@ object Weather {
       ).iterator
     }
 
-    val zero = (SymFloat(Float.MaxValue, Provenance.provenanceFactory.create(-1)),
-      SymFloat(Float.MinValue ,Provenance.provenanceFactory.create(-1)))
-
-    val deltaSnow = split.aggregateByKey(zero)(
+    val deltaSnow = split.aggregateByKey[(SymFloat, SymFloat)]((Float.MaxValue, Float.MinValue))(
       {case ((curMin , curMax), next) => (MathSym.min(curMin, next), MathSym.max(curMax, next))},
       {case ((minA, maxA), (minB, maxB)) =>(MathSym.min(minA, minB), MathSym.max(maxA, maxB))})
 
