@@ -59,6 +59,9 @@ class ProvenanceInserter extends Transformer {
     case Lit.Int(str) =>
       createSymTerm(Term.Name("SymInt") ,  tree)
 
+    case Lit.Long(str) =>
+      createSymTerm(Term.Name("SymLong") , tree)
+      
     case Lit.Float(str) =>
       createSymTerm(Term.Name("SymFloat") ,  tree)
 
@@ -138,7 +141,11 @@ object Insert {
         |        .reduceByKey(_ + _)
         |}""".stripMargin
     val tree = program.parse[Source].get
-    println(transformer(tree))
+    val transformed = transformer(tree)
+    
+    println("-" * 50)
+    println(transformed)
+    println("-" * 50)
 
   }
 
