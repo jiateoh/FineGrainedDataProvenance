@@ -272,6 +272,13 @@ object Utils {
     defaultUDFAwareEnabled = value
   }
   
+  /** Computes the union of all (non-nested) SymBase provenances in the list. */
+  def addProvDependency(list: List[Any]): Provenance = {
+    val symBases = list.collect({case s: SymBase => s})
+    if(symBases.isEmpty) DummyProvenance.create() else
+        symBases.foldLeft(Provenance.create())((prov,symbase) => prov.merge(symbase.prov))
+  }
+  
   // A regular expression to match classes of the internal Spark API's
   // that we want to skip when finding the call site of a method.
   private val SPARK_CORE_CLASS_REGEX =
