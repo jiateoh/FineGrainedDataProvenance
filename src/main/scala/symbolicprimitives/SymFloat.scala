@@ -6,70 +6,53 @@ import provenance.data.Provenance
   * Created by malig on 4/25/19.
   */
 
-case class SymFloat(value: Float, p:Provenance) extends SymBase(p){
-
-
-  // TODO: Implement the influence/rank function here
-  def mergeProvenance(prov_other : Provenance): Provenance = {
-    prov.merge(prov_other)
-  }
-
-  def getValue(): Float = {
-    return value
-  }
-
+case class SymFloat(override val value: Float, p:Provenance) extends SymAny(value, p){
+  
+  
   /**
     * Overloading operators from here onwards
     */
 
-  override def hashCode(): Int = value.hashCode()
-  override def equals(obj: scala.Any): Boolean =  obj match {
-    case x: SymInt => value.equals(x.getValue())
-    case x: SymDouble => value.equals(x.getValue())
-    case x: SymFloat => value.equals(x.getValue())
-    case _ =>  value.equals(obj)
-  }
-
   def +(x: Float): SymFloat = {
     val d = value + x
-    new SymFloat(d, prov)
+    SymFloat(d, prov)
   }
 
   def -(x: Float): SymFloat = {
     val d = value - x
-    new SymFloat(d, prov)
+    SymFloat(d, prov)
   }
 
   def *(x: Float): SymFloat = {
     val d = value * x
-    new SymFloat(d, prov)
+    SymFloat(d, prov)
 
   }
 
   def /(x: Float): SymFloat = {
     val d = value / x
-    new SymFloat(d, prov)
+    SymFloat(d, prov)
   }
 
   def +(x: SymFloat): SymFloat = {
-    new SymFloat(value + x.getValue(), mergeProvenance(x.getProvenance()))
+    SymFloat(value + x.value, mergeProvenance(x.getProvenance()))
   }
 
   def +(x: SymDouble): SymDouble = {
-    new SymDouble(value + x.getValue(), mergeProvenance(x.getProvenance()))
+    SymDouble(value + x.value, mergeProvenance(x.getProvenance()))
   }
 
   def -(x: SymFloat): SymFloat = {
-    new SymFloat(value - x.getValue(), mergeProvenance(x.getProvenance()))
+    SymFloat(value - x.value, mergeProvenance(x.getProvenance()))
   }
 
   def *(x: SymFloat): SymFloat = {
-    new SymFloat(value * x.getValue(), mergeProvenance(x.getProvenance()))
+    SymFloat(value * x.value, mergeProvenance(x.getProvenance()))
 
   }
 
   def /(x: SymFloat): SymFloat = {
-    new SymFloat(value / x.getValue(), mergeProvenance(x.getProvenance()))
+    SymFloat(value / x.value, mergeProvenance(x.getProvenance()))
   }
 
   /**

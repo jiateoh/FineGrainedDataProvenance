@@ -2,35 +2,17 @@ package symbolicprimitives
 
 import provenance.data.Provenance
 
-object StringImplicits {
-  implicit def symString2string(s: SymString): String = s.getValue()
-
-}
 /**
   * Created by malig on 4/29/19.
   */
-case class SymString(value: String,  p: Provenance) extends SymBase(p) {
-
-
-  // TODO: Implement the influence/rank function here
-  def mergeProvenance(prov_other : Provenance): Provenance = {
-    prov.merge(prov_other)
-  }
-
-
-  def getValue(): String = {
-    return value
-  }
-
-  override def toString: String =
-    value.toString + s""" (Provenance Bitmap: ${prov})"""
+case class SymString(override val value: String, p: Provenance) extends SymAny(value, p) {
 
   /**
     * Unsupported Operations
     */
 
    def length: SymInt = {
-     new SymInt( value.length, prov)
+     SymInt(value.length, prov)
   }
 
    def split(separator: Char): Array[SymString] = {
@@ -74,28 +56,17 @@ case class SymString(value: String,  p: Provenance) extends SymBase(p) {
 
 
    def toInt: SymInt ={
-    new SymInt( value.toInt, prov)
+    SymInt( value.toInt, prov)
   }
 
    def toFloat: SymFloat =
-     new SymFloat(value.toFloat , prov)
+     SymFloat(value.toFloat , prov)
 
    def toDouble: SymDouble ={
-    new SymDouble(value.toDouble , prov)
+    SymDouble(value.toDouble , prov)
   }
 
-
-
-  override def hashCode : Int = value.hashCode
-
-  override def equals(obj: scala.Any): Boolean = {
-  obj match {
-    case str: SymString => this.equals(str)
-    case _ =>  value.equals(obj)
-  }
-
-  }
-  def equals(obj: SymString): Boolean = value.equals(obj.getValue())
-  def eq(obj: SymString): Boolean = value.eq(obj.getValue())
+  def equals(obj: SymString): Boolean = value.equals(obj.value)
+  def eq(obj: SymString): Boolean = value.eq(obj.value)
 
 }

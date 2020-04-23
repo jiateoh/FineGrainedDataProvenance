@@ -26,27 +26,27 @@ object MathSym {
 
   /**  @group trig */
   def sin(x: SymDouble): SymDouble =
-    new SymDouble(Math.sin(x.getValue()), x.getProvenance())
+    SymDouble(Math.sin(x.value), x.getProvenance())
 
   /**  @group trig */
   def cos(x: SymDouble): SymDouble =
-    new SymDouble(Math.cos(x.getValue()), x.getProvenance())
+    SymDouble(Math.cos(x.value), x.getProvenance())
 
   /**  @group trig */
   def tan(x: SymDouble): SymDouble =
-    new SymDouble(Math.tan(x.getValue()), x.getProvenance())
+    SymDouble(Math.tan(x.value), x.getProvenance())
 
   /**  @group trig */
   def asin(x: SymDouble): SymDouble =
-    new SymDouble(Math.asin(x.getValue()), x.getProvenance())
+    SymDouble(Math.asin(x.value), x.getProvenance())
 
   /**  @group trig */
   def acos(x: SymDouble): SymDouble =
-    new SymDouble(Math.acos(x.getValue()), x.getProvenance())
+    SymDouble(Math.acos(x.value), x.getProvenance())
 
   /**  @group trig */
   def atan(x: SymDouble): SymDouble =
-    new SymDouble(Math.atan(x.getValue()), x.getProvenance())
+    SymDouble(Math.atan(x.value), x.getProvenance())
 
   /** Converts an angle measured in degrees to an approximately equivalent
     *  angle measured in radians.
@@ -56,7 +56,7 @@ object MathSym {
     *  @group angle-conversion
     */
   def toRadians(x: SymDouble): SymDouble =
-    new SymDouble(Math.toRadians(x.getValue()), x.getProvenance())
+    SymDouble(Math.toRadians(x.value), x.getProvenance())
 
   /** Converts an angle measured in radians to an approximately equivalent
     *  angle measured in degrees.
@@ -66,7 +66,7 @@ object MathSym {
     *  @group angle-conversion
     */
   def toDegrees(x: SymDouble): SymDouble =
-    new SymDouble(Math.toDegrees(x.getValue()), x.getProvenance())
+    SymDouble(Math.toDegrees(x.value), x.getProvenance())
 
   /** Converts rectangular coordinates `(x, y)` to polar `(r, theta)`.
     *
@@ -97,11 +97,11 @@ object MathSym {
 
   /** @group rounding */
   def ceil(x: SymDouble): SymDouble =
-    new SymDouble(Math.ceil(x.getValue()), x.getProvenance())
+    SymDouble(Math.ceil(x.value), x.getProvenance())
 
   /** @group rounding */
   def floor(x: SymDouble): SymDouble =
-    new SymDouble(Math.floor(x.getValue()), x.getProvenance())
+    SymDouble(Math.floor(x.value), x.getProvenance())
 
   /** Returns the `Double` value that is closest in value to the
     *  argument and is equal to a mathematical integer.
@@ -141,22 +141,22 @@ object MathSym {
 
   /** @group abs */
   def abs(x: SymInt): SymInt =
-    new SymInt(Math.abs(x.getValue()), x.getProvenance())
+    SymInt(Math.abs(x.value), x.getProvenance())
 
   /** @group abs */
   def abs(x: Long): Long = java.lang.Math.abs(x)
 
   /** @group abs */
   def abs(x: SymFloat): SymFloat =
-     SymFloat(Math.abs(x.getValue()), x.getProvenance())
+     SymFloat(Math.abs(x.value), x.getProvenance())
 
   /** @group abs */
   def abs(x: SymDouble): SymDouble =
-     SymDouble(Math.abs(x.getValue()), x.getProvenance())
+     SymDouble(Math.abs(x.value), x.getProvenance())
 
   /** @group minmax */
   def max(x: SymInt, y: SymInt): SymInt = {
-    if (Math.max(x.getValue(), y.getValue()) == x.getValue())  x
+    if (Math.max(x.value, y.value) == x.value)  x
     else  y
   }
 
@@ -165,19 +165,19 @@ object MathSym {
 
   /** @group minmax */
   def max(x: SymFloat, y: SymFloat): SymFloat = {
-    if (Math.max(x.getValue(), y.getValue()) == x.getValue())  x
+    if (Math.max(x.value, y.value) == x.value)  x
     else return y
   }
 
   /** @group minmax */
   def max(x: SymDouble, y: SymDouble): SymDouble = {
-    if (Math.max(x.getValue(), y.getValue()) == x.getValue())  x
+    if (Math.max(x.value, y.value) == x.value)  x
     else  y
   }
 
   /** @group minmax */
   def min(x: SymInt, y: SymInt): SymInt = {
-    if (Math.min(x.getValue(), y.getValue()) == x.getValue())  x
+    if (Math.min(x.value, y.value) == x.value)  x
     else  y
   }
 
@@ -186,13 +186,13 @@ object MathSym {
 
   /** @group minmax */
   def min(x: SymFloat, y: SymFloat): SymFloat = {
-    if (Math.min(x.getValue(), y.getValue()) == x.getValue())  x
+    if (Math.min(x.value, y.value) == x.value)  x
     else return y
   }
 
   /** @group minmax */
   def min(x: SymDouble, y: SymDouble): SymDouble = {
-    if (Math.min(x.getValue(), y.getValue()) == x.getValue()) return x
+    if (Math.min(x.value, y.value) == x.value) return x
     else return y
   }
 
@@ -271,7 +271,7 @@ object MathSym {
     * @group root-extraction
     */
   def sqrt(x: SymDouble): SymDouble =
-    new SymDouble(Math.sqrt(x.getValue()), x.getProvenance())
+    SymDouble(Math.sqrt(x.value), x.getProvenance())
 
   /** Returns the cube root of the given `Double` value.
     *
@@ -280,7 +280,7 @@ object MathSym {
     * @group root-extraction
     */
   def cbrt(x: SymDouble): SymDouble =
-    new SymDouble(Math.cbrt(x.getValue()), x.getProvenance())
+    SymDouble(Math.cbrt(x.value), x.getProvenance())
 
   // -----------------------------------------------------------------------
   // exponential functions
@@ -295,7 +295,7 @@ object MathSym {
     *  @group explog
     */
   def pow(x: SymDouble, y: SymDouble): SymDouble =
-    new SymDouble(Math.pow(x.getValue(), y.getValue()), x.mergeProvenance(y.getProvenance()))
+    SymDouble(Math.pow(x.value, y.value), x.mergeProvenance(y.getProvenance()))
 
   /** Returns Euler's number `e` raised to the power of a `Double` value.
     *
@@ -305,7 +305,7 @@ object MathSym {
     *  @group explog
     */
   def exp(x: SymDouble): SymDouble =
-    new SymDouble(Math.exp(x.getValue()), x.getProvenance())
+    SymDouble(Math.exp(x.value), x.getProvenance())
 
   /** Returns `exp(x) - 1`.
     *  @group explog
@@ -329,7 +329,7 @@ object MathSym {
     *  @group explog
     */
   def log(x: SymDouble): SymDouble =
-    new SymDouble(Math.log(x.getValue()), x.getProvenance())
+    SymDouble(Math.log(x.value), x.getProvenance())
 
   /** Returns the natural logarithm of the sum of the given `Double` value and 1.
     *  @group explog
