@@ -25,5 +25,5 @@ class DummyProvenance private extends Provenance {
 
 object DummyProvenance extends ProvenanceFactory {
   private val instance = new DummyProvenance
-  override def create(id: Long = -1): Provenance = instance
+  override def create(ids: Long*): Provenance = instance
 }

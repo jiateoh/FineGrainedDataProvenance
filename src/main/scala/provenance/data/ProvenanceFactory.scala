@@ -1,5 +1,5 @@
 package provenance.data
 
 trait ProvenanceFactory {
-  def create(id: Long): Provenance
+  def create(ids: Long*): Provenance
 }

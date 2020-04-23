@@ -34,9 +34,13 @@ object Provenance {
   }
   setDedupSerializer(true)
   
-  var provenanceFactory: ProvenanceFactory = _
+  private var provenanceFactory: ProvenanceFactory = _
   setProvenanceFactory(RoaringBitmapProvenance)
   //setProvenanceFactory(SetProvenance)
+  
+  def create(ids: Long*): Provenance = provenanceFactory.create(ids: _*)
+  // Eagerly evaluated function meant to be used for distributed usage.
+  def createFn(): Seq[Long] => Provenance = provenanceFactory.create _
   
   def setProvenanceFactory(provenanceFactory: ProvenanceFactory): Unit = {
     println("-" * 40)

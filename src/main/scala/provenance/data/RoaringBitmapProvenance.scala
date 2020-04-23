@@ -59,14 +59,13 @@ class RoaringBitmapProvenance(var bitmap: RoaringBitmap) extends DataStructurePr
 }
 
 object RoaringBitmapProvenance extends ProvenanceFactory {
-  override def create(id: Long): Provenance = {
-    if (id > Int.MaxValue)
+  override def create(ids: Long*): RoaringBitmapProvenance = {
+    if (ids.exists(_ > Int.MaxValue))
     // jteoh: Roaring64NavigableBitmap should be an option if this is required.
       throw new UnsupportedOperationException(
-        "The offset is greater than Int.Max which is not supported yet")
+        s"At least one offset is greater than Int.Max which is not supported yet: $ids")
     val bitmap = new RoaringBitmap()
-    bitmap.add(id.asInstanceOf[Int])
-    
+    bitmap.add(ids.map(_.toInt): _*)
     new RoaringBitmapProvenance(bitmap)
   }
 }
