@@ -1,5 +1,6 @@
 package examples.benchmarks.symbolic_benchmarks
 
+import examples.benchmarks.AggregationFunctions
 import org.apache.spark.{SparkConf, SparkContext}
 import sparkwrapper.SparkContextWithDP
 import symbolicprimitives.{MathSym, SymFloat, SymString, Utils}
@@ -53,12 +54,7 @@ object WeatherSymbolic {
       ).iterator
     }
 
-    val deltaSnow = split.aggregateByKey[(SymFloat, SymFloat)]((Float.MaxValue, Float.MinValue))(
-      {case ((curMin , curMax), next) => (MathSym.min(curMin, next), MathSym.max(curMax, next))},
-      {case ((minA, maxA), (minB, maxB)) =>(MathSym.min(minA, minB), MathSym.max(maxA, maxB))}
-      // If we didn't define udfAware flag globally, we could override enableUDFAwareProv here
-      )
-      .mapValues({ case (min, max) => max - min})
+    val deltaSnow = AggregationFunctions.minMaxDeltaSym(split)
 
     val out = deltaSnow.collectWithProvenance()
     out.foreach(println)

@@ -1,5 +1,6 @@
 package examples.benchmarks.provenance_benchmarks
 
+import examples.benchmarks.AggregationFunctions
 import org.apache.spark.{SparkConf, SparkContext}
 import sparkwrapper.SparkContextWithDP
 
@@ -49,10 +50,8 @@ object WeatherProvenance {
     //      val delta = s._2.max - s._2.min
     //      (s._1, delta)
     //    }
-    val deltaSnow = split.aggregateByKey((0F, 0F))(
-      {case ((curMin, curMax), next) => (Math.min(curMin, next), Math.max(curMax, next))},
-      {case ((minA, maxA), (minB, maxB)) => (Math.min(minA, minB), Math.max(maxA, maxB))})
-    .mapValues({case (min, max) => max - min})
+    val deltaSnow = AggregationFunctions.minMaxDelta(split)
+    
     
     val out = deltaSnow.collectWithProvenance()
     out.foreach(println)
