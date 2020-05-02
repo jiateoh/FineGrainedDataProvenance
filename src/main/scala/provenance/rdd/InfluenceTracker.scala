@@ -1,8 +1,10 @@
 package provenance.rdd
 
 import provenance.data.{DummyProvenance, Provenance, RoaringBitmapProvenance}
+import symbolicprimitives.{SymBase, SymInt}
 
 import scala.collection.mutable
+import scala.reflect.ClassTag
 
 /** Provenance tracker trait for influence functions, designed to mirror combineByKey but with
   * flexibility in definition. All operations should be assumed to be potential mutators. */
@@ -81,7 +83,7 @@ case class MaxInfluenceTracker[T](override implicit val ordering: Ordering[T])
 case class MinInfluenceTracker[T](override implicit val ordering: Ordering[T])
   extends SingleOrderedTracker[T](ordering.reverse)
 
-abstract class OrderedNInfluenceTracker[T](maxSize: Int)(implicit ordering: Ordering[T])
+abstract class OrderedNInfluenceTracker[T](val maxSize: Int)(implicit ordering: Ordering[T])
   extends OrderingInfluenceTracker[T](ordering) {
   
   private val heap = new mutable.PriorityQueue[ProvenanceRow[T]]()(rowOrdering)
@@ -99,7 +101,7 @@ abstract class OrderedNInfluenceTracker[T](maxSize: Int)(implicit ordering: Orde
   
   override def mergeTracker(other: InfluenceTracker[T]): OrderedNInfluenceTracker[T] = {
     other match {
-      case o: TopNInfluenceTracker[T] =>
+      case o: OrderedNInfluenceTracker[T] =>
         assert(this.maxSize == o.maxSize)
         addToHeap(o.heap.toSeq: _*)
       case _ =>
@@ -114,10 +116,10 @@ abstract class OrderedNInfluenceTracker[T](maxSize: Int)(implicit ordering: Orde
   }
 }
 
-case class BottomNInfluenceTracker[T](maxSize: Int)(implicit ordering: Ordering[T])
+case class BottomNInfluenceTracker[T](override val maxSize: Int)(implicit ordering: Ordering[T])
   extends OrderedNInfluenceTracker[T](maxSize)(ordering)
 
-case class TopNInfluenceTracker[T](maxSize: Int)(implicit ordering: Ordering[T])
+case class TopNInfluenceTracker[T](override val maxSize: Int)(implicit ordering: Ordering[T])
   extends OrderedNInfluenceTracker[T](maxSize)(ordering.reverse)
 
 object InfluenceTrackerExample{
@@ -142,5 +144,8 @@ object InfluenceTrackerExample{
     val heap2 = new TopNInfluenceTracker[Int](3)
     heap2.init((5, RoaringBitmapProvenance.create(500)))
     println(heap.mergeTracker(heap2).computeProvenance())
+    
+    val ct: ClassTag[SymInt] = scala.reflect.classTag[SymInt]
+    println(classOf[SymBase].isAssignableFrom(ct.runtimeClass))
   }
 }
