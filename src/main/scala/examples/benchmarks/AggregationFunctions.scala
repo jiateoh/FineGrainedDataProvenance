@@ -39,10 +39,28 @@ object AggregationFunctions {
       {case ((sum1, count1), (sum2, count2)) => (sum1+sum2,count1+count2)}
     ).mapValues({case (sum, count) => sum.toDouble/count})
   }
+  def averageByKey[K: ClassTag](input: ProvenanceRDD[(K, Double)])
+                               (implicit a: DummyImplicit) : PairProvenanceRDD[K, Double] = {
+    input.aggregateByKey((0.0, 0))(
+      {case ((sum, count), next) => (sum + next, count+1)},
+      {case ((sum1, count1), (sum2, count2)) => (sum1+sum2,count1+count2)}
+                                                          ).mapValues({case (sum, count) => sum.toDouble/count})
+  }
   
   def averageByKey[K: ClassTag](input: ProvenanceRDD[(K, SymInt)])
-                               (implicit a: DummyImplicit): PairProvenanceRDD[K, SymDouble] = {
+                               (implicit a: DummyImplicit,
+                                b: DummyImplicit): PairProvenanceRDD[K, SymDouble] = {
     input.aggregateByKey[(SymLong, SymInt)]((0L, 0))(
+      {case ((sum, count), next) => (sum + next, count+1)},
+      {case ((sum1, count1), (sum2, count2)) => (sum1+sum2,count1+count2)}
+                                                          ).mapValues({case (sum, count) => sum.toDouble/count})
+  }
+  
+  def averageByKey[K: ClassTag](input: ProvenanceRDD[(K, SymDouble)])
+                               (implicit a: DummyImplicit,
+                                b: DummyImplicit,
+                                c: DummyImplicit): PairProvenanceRDD[K, SymDouble] = {
+    input.aggregateByKey[(SymDouble, SymInt)]((0.0, 0))(
       {case ((sum, count), next) => (sum + next, count+1)},
       {case ((sum1, count1), (sum2, count2)) => (sum1+sum2,count1+count2)}
                                                           ).mapValues({case (sum, count) => sum.toDouble/count})
