@@ -15,6 +15,28 @@ trait InfluenceTracker[T] {
   def computeProvenance(): Provenance
 }
 
+case class AllInfluenceTracker[T]() extends InfluenceTracker[T] {
+  private var prov: Provenance = _
+  
+  override def init(value: ProvenanceRow[T]): AllInfluenceTracker[T] = {
+    prov = value._2
+    this
+  }
+  
+  override def mergeValue(value: ProvenanceRow[T]): AllInfluenceTracker[T] = {
+    prov.merge(value._2)
+    this
+  }
+  
+  override def mergeTracker(other: InfluenceTracker[T]): AllInfluenceTracker[T] = {
+    prov.merge(other.computeProvenance())
+    this
+  }
+  
+  /** Return the provenance tracked in this tracker. Note that this method may be destructive and
+    * should only be called once! *  */
+  override def computeProvenance(): Provenance = prov
+}
 abstract class OrderingInfluenceTracker[T](val ordering: Ordering[T]) extends InfluenceTracker[T] {
   val rowOrdering: Ordering[ProvenanceRow[T]] =
     Ordering.by[ProvenanceRow[T], T](_._1)(ordering)
