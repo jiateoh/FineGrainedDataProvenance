@@ -130,6 +130,7 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
     *   influence/logical lineage.
     *
     *   CombinerWithInfluence --> ( (C , V), Prov)
+    *   TODO UPDATE DOC
     *
     * TODO if output type is symbolic, adjust provenance accordingly
     * */
@@ -193,6 +194,81 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
          combinerResult.mapValues((row: CombinerRow) => (row._1._1, row._2))
       }
     )
+  }
+  
+  // TODO test new api, integrate if functional
+  def combineByKeyWithClassTag2[C](
+                                     createCombiner: V => C,
+                                     mergeValue: (C, V) => C,
+                                     mergeCombiners: (C, C) => C,
+                                     partitioner: Partitioner = defaultPartitioner,
+                                     mapSideCombine: Boolean = true,
+                                     serializer: Serializer = null,
+                                     enableUDFAwareProv: Option[Boolean] = None,
+                                     influenceTrackerCtr: Option[() => InfluenceTracker[V]] = None)(
+                                     implicit ct: ClassTag[C]): PairProvenanceDefaultRDD[K, C] = {
+    val _enableUDFAwareProv = Utils.getUDFAwareEnabledValue(enableUDFAwareProv)
+    assert(influenceTrackerCtr.isEmpty || !_enableUDFAwareProv, "UDFAware Provenance " +
+      "should not be enabled if using influence functions")
+    // Based on ShuffledRDD implementation for serializer
+    val resultSerializer = serializer
+    // shorthands for easier reference
+    type ValueRow = ProvenanceRow[V]
+    
+    if(_enableUDFAwareProv) {
+      // Technically this is a misconfiguration - you shouldn't enable udf provenance if the
+      // output type is not a symbolic object!
+      assert(classOf[SymBase].isAssignableFrom(ct.runtimeClass), "UDF-aware flag should only be used if output " +
+        "type is a SymBase")
+      // We'll use the combiner's provenance since it's a symbase. No need to propagate row-level
+      // provenance!
+      def createProvCombiner(value: ValueRow): C = createCombiner(value._1)
+      def mergeProvValue(combiner: C, value: ValueRow): C = mergeValue(combiner, value._1)
+      // use default mergeCombiners
+      val mergeProvCombiners = mergeCombiners
+
+      val combinerResult: RDD[(K, C)] = rdd.combineByKeyWithClassTag[C](
+        createProvCombiner _,
+        mergeProvValue _,
+        mergeProvCombiners,
+        partitioner,
+        mapSideCombine,
+        resultSerializer
+        )
+      // The output will be a symobj, so rely on that to identify provenance
+      val extractedSymBaseProv = combinerResult.mapValues(v => (v, v.asInstanceOf[SymBase].prov))
+      new PairProvenanceDefaultRDD[K,C](extractedSymBaseProv)
+    } else {
+      val _influenceTrackerCtr: () => InfluenceTracker[V] = influenceTrackerCtr.getOrElse(AllInfluenceTracker[V])
+      // We should use influence functions. These will be tied along with each combiner to
+      // identify what the retained provenance should be.
+      // TODO optimization: since udfAware is false, we should remove/dummy any provenance in the
+      //  Combiner class if it's a SymBase to reduce overheads.
+      type CombinerWithInfluenceTracker = (C, InfluenceTracker[V])
+      def createProvCombiner(value: ValueRow): CombinerWithInfluenceTracker = {
+        val tracker = _influenceTrackerCtr() // needed for compile for unknown reasons...
+        (createCombiner(value._1), tracker)
+      }
+      def mergeProvValue(combinerRow: CombinerWithInfluenceTracker, value: ValueRow): CombinerWithInfluenceTracker = {
+        (mergeValue(combinerRow._1, value._1), combinerRow._2.mergeValue(value))
+      }
+      def mergeProvCombiners(c1: CombinerWithInfluenceTracker, c2: CombinerWithInfluenceTracker): CombinerWithInfluenceTracker = {
+        (mergeCombiners(c1._1, c2._1), c1._2.mergeTracker(c2._2))
+      }
+  
+      val combinerResult: RDD[(K, CombinerWithInfluenceTracker)] =
+        rdd.combineByKeyWithClassTag[CombinerWithInfluenceTracker](
+          createProvCombiner _,
+          mergeProvValue _,
+          mergeProvCombiners _,
+          partitioner,
+          mapSideCombine,
+          resultSerializer
+        )
+      val combinerRowResults: RDD[(K, ProvenanceRow[C])] = combinerResult.mapValues(
+        {case (combiner, tracker) => (combiner, tracker.computeProvenance())})
+      new PairProvenanceDefaultRDD[K,C](combinerRowResults)
+    }
   }
 
  /**
