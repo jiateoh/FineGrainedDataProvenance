@@ -53,7 +53,7 @@ object WeatherSymbolic {
         (year, snow)
       ).iterator
     }
-split.rdd.distinct()
+    
     val deltaSnow = AggregationFunctions.minMaxDeltaByKey(split)
 
     val out = deltaSnow.collectWithProvenance()

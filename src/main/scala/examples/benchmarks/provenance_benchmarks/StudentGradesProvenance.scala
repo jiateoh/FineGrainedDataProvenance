@@ -46,7 +46,7 @@ object StudentGradesProvenance { // extends SparkRDDGenerator
            }
            .reduceByKey(_ + _)
            .filter(v => v._2 > 1)
-    val out = passFails.collect()
+    val out = passFails.collectWithProvenance()
                  //.map(m => m._1 +","+ m._2)
     out.foreach(println)
     

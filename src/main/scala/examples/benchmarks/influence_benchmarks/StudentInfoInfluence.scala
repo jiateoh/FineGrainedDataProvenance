@@ -2,6 +2,7 @@ package examples.benchmarks.influence_benchmarks
 
 import org.apache.spark.{SparkConf, SparkContext}
 import provenance.data.InfluenceMarker
+import provenance.rdd.MaxInfluenceTracker
 import sparkwrapper.SparkContextWithDP
 
 /**
@@ -52,7 +53,8 @@ object StudentInfoInfluence {
       {case ((sum, count), next) => (sum + next, count+1)},
       {case ((sum1, count1), (sum2, count2)) => (sum1+sum2,count1+count2)},
       enableUDFAwareProv = None,
-      inflFunction = Some(InfluenceMarker.MaxWithTiesFn[Int]))
+      //inflFunction = Some(InfluenceMarker.MaxWithTiesFn[Int]))
+      influenceTrackerCtr = Some(()=> MaxInfluenceTracker[Int]))
     .mapValues({case (sum, count) => sum.toDouble/count})
     //val out = average_age_by_grade.collect()
     //out.foreach(println)

@@ -4,11 +4,12 @@ import provenance.data.{DummyProvenance, Provenance, RoaringBitmapProvenance}
 import symbolicprimitives.{SymBase, SymInt}
 
 import scala.collection.mutable
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 import scala.reflect.ClassTag
 
 /** Provenance tracker trait for influence functions, designed to mirror combineByKey but with
   * flexibility in definition. All operations should be assumed to be potential mutators. */
-trait InfluenceTracker[T] {
+trait InfluenceTracker[T] extends Serializable {
   def init(value: ProvenanceRow[T]): InfluenceTracker[T]
   def mergeValue(value: ProvenanceRow[T]): InfluenceTracker[T]
   def mergeTracker(other: InfluenceTracker[T]): InfluenceTracker[T]
@@ -122,6 +123,72 @@ case class BottomNInfluenceTracker[T](override val maxSize: Int)(implicit orderi
 case class TopNInfluenceTracker[T](override val maxSize: Int)(implicit ordering: Ordering[T])
   extends OrderedNInfluenceTracker[T](maxSize)(ordering.reverse)
 
+class UnionInfluenceTracker[T](val trackers: InfluenceTracker[T]*) extends InfluenceTracker[T] {
+  override def init(value: ProvenanceRow[T]): UnionInfluenceTracker[T] ={
+    trackers.foreach(_.init(value))
+    this
+  }
+  
+  override def mergeValue(value: ProvenanceRow[T]): UnionInfluenceTracker[T] = {
+    trackers.foreach(_.mergeValue(value))
+    this
+  }
+  
+  override def mergeTracker(other: InfluenceTracker[T]): UnionInfluenceTracker[T] = {
+    other match {
+      case o: UnionInfluenceTracker[T] =>
+        // Assumption: same set of tracker types
+        trackers.zip(o.trackers).foreach {case (a, b) => a.mergeTracker(b)}
+        this
+      case _ =>
+        throw new UnsupportedOperationException(s"Cannot compare ${this.getClass.getSimpleName} " +
+                                                  "with other InfluenceTracker types")
+    }
+  }
+  
+  /** Return the provenance tracked in this tracker. Note that this method may be destructive and
+    * should only be called once! *  */
+  override def computeProvenance(): Provenance = {
+    trackers.foldLeft(DummyProvenance.create())(
+      {case (unionProv, tracker) => unionProv.merge(tracker.computeProvenance())}
+    )
+  }
+}
+
+/** Retains provenance for only the values that pass (true) the filterFn */
+case class FilterInfluenceTracker[T](filterFn: T => Boolean) extends InfluenceTracker[T] {
+  // For unknown reasons, using a ListBuffer can result in loss of entire data rows (not just
+  // provenance, but the rdd count itself.
+  //private val values = ListBuffer[Provenance]()
+  private val values = ArrayBuffer[Provenance]()
+
+  private def addIfFiltered(value: ProvenanceRow[T]): FilterInfluenceTracker[T] = {
+    if(filterFn(value._1)) values += value._2
+    this
+  }
+  // Technically should 'reset', but lazy implementation for now.
+  override def init(value: ProvenanceRow[T]): FilterInfluenceTracker[T] = addIfFiltered(value)
+  
+  override def mergeValue(value: ProvenanceRow[T]): FilterInfluenceTracker[T] = addIfFiltered(value)
+  
+  override def mergeTracker(other: InfluenceTracker[T]): FilterInfluenceTracker[T] = {
+    other match {
+      case o: FilterInfluenceTracker[T] =>
+        // primitive implementation, doesn't do any deduplication on the fly.
+        this.values ++= o.values
+        this
+      case _ =>
+        throw new UnsupportedOperationException(s"Cannot compare ${this.getClass.getSimpleName} " +
+                                                  "with other InfluenceTracker types")
+    }
+  }
+  
+  /** Return the provenance tracked in this tracker. Note that this method may be destructive and
+    * should only be called once! *  */
+  override def computeProvenance(): Provenance =
+    values.foldLeft(DummyProvenance.create())(_.merge(_))
+}
+
 object InfluenceTrackerExample{
   def main(args: Array[String]): Unit = {
     val first = MaxInfluenceTracker[Int]
@@ -147,5 +214,14 @@ object InfluenceTrackerExample{
     
     val ct: ClassTag[SymInt] = scala.reflect.classTag[SymInt]
     println(classOf[SymBase].isAssignableFrom(ct.runtimeClass))
+    
+    val filterTracker = FilterInfluenceTracker[Int](_ > 5)
+    filterTracker.init((1, RoaringBitmapProvenance.create(1)))
+    filterTracker.mergeValue((6, RoaringBitmapProvenance.create(600)))
+    val filterTracker2 = FilterInfluenceTracker[Int](_ > 5)
+    filterTracker.init((7, RoaringBitmapProvenance.create(700)))
+    filterTracker.mergeValue((3, RoaringBitmapProvenance.create(3)))
+    filterTracker.mergeTracker(filterTracker2)
+    println(filterTracker.computeProvenance())
   }
 }

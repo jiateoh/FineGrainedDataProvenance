@@ -52,7 +52,7 @@ object StudentInfoProvenance {
       {case ((sum, count), next) => (sum + next, count+1)},
       {case ((sum1, count1), (sum2, count2)) => (sum1+sum2,count1+count2)},
       enableUDFAwareProv = None,
-      inflFunction = None) // need to provide default values due to API limitations.
+      influenceTrackerCtr = None) // need to provide default values due to API limitations.
     // provide a default value.
     .mapValues({case (sum, count) => sum.toDouble/count})
     //val out = average_age_by_grade.collect()

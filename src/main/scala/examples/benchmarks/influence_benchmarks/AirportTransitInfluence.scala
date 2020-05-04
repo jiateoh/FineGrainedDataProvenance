@@ -2,6 +2,7 @@ package examples.benchmarks.influence_benchmarks
 
 import org.apache.spark.{SparkConf, SparkContext}
 import provenance.data.InfluenceMarker
+import provenance.rdd.{MaxInfluenceTracker, TopNInfluenceTracker}
 import sparkwrapper.SparkContextWithDP
 import symbolicprimitives.{SymInt, SymString, Utils}
 
@@ -42,7 +43,11 @@ object AirportTransitInfluence {
     
     //val out = fil.reduceByKey(_ + _, InfluenceMarker.MaxFn[Int])
     // Unfortunately, Scala won't compile if we use underscore notation here.
-    val out = fil.reduceByKey((a: Int, b: Int) => a + b, InfluenceMarker.MaxFn[Int])
+    // Removed: old influence version
+    //val out = fil.reduceByKey((a: Int, b: Int) => a + b, InfluenceMarker.MaxFn[Int])
+    val out = fil.reduceByKey((a: Int, b: Int) => a + b,
+                              //() => MaxInfluenceTracker[Int])
+                              () => TopNInfluenceTracker[Int](5))
     
     out.collectWithProvenance().foreach(println)
   }

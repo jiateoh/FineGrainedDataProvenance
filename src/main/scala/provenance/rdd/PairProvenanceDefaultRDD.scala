@@ -134,7 +134,7 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
     *
     * TODO if output type is symbolic, adjust provenance accordingly
     * */
-  override def combineByKeyWithClassTag[C](
+  override def combineByKeyWithClassTagOld[C](
       createCombiner: V => C,
       mergeValue: (C, V) => C,
       mergeCombiners: (C, C) => C,
@@ -197,7 +197,7 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
   }
   
   // TODO test new api, integrate if functional
-  def combineByKeyWithClassTag2[C](
+  override def combineByKeyWithClassTag[C](
                                      createCombiner: V => C,
                                      mergeValue: (C, V) => C,
                                      mergeCombiners: (C, C) => C,
@@ -215,11 +215,12 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
     // shorthands for easier reference
     type ValueRow = ProvenanceRow[V]
     
-    if(_enableUDFAwareProv) {
-      // Technically this is a misconfiguration - you shouldn't enable udf provenance if the
-      // output type is not a symbolic object!
-      assert(classOf[SymBase].isAssignableFrom(ct.runtimeClass), "UDF-aware flag should only be used if output " +
-        "type is a SymBase")
+    if(_enableUDFAwareProv && classOf[SymBase].isAssignableFrom(ct.runtimeClass)) {
+      // Used to require that udfAware -> output is symbase, but that's too restrictive.
+      //      assert(classOf[SymBase].isAssignableFrom(ct.runtimeClass), "UDF-aware flag should only be used if output " +
+      //        "type is a SymBase, but found " + ct)
+      
+      
       // We'll use the combiner's provenance since it's a symbase. No need to propagate row-level
       // provenance!
       def createProvCombiner(value: ValueRow): C = createCombiner(value._1)
@@ -239,6 +240,7 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
       val extractedSymBaseProv = combinerResult.mapValues(v => (v, v.asInstanceOf[SymBase].prov))
       new PairProvenanceDefaultRDD[K,C](extractedSymBaseProv)
     } else {
+      // default is an AllInfluenceTracker, i.e. don't filter anything.
       val _influenceTrackerCtr: () => InfluenceTracker[V] = influenceTrackerCtr.getOrElse(AllInfluenceTracker[V])
       // We should use influence functions. These will be tied along with each combiner to
       // identify what the retained provenance should be.
@@ -247,6 +249,7 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
       type CombinerWithInfluenceTracker = (C, InfluenceTracker[V])
       def createProvCombiner(value: ValueRow): CombinerWithInfluenceTracker = {
         val tracker = _influenceTrackerCtr() // needed for compile for unknown reasons...
+        tracker.init(value)
         (createCombiner(value._1), tracker)
       }
       def mergeProvValue(combinerRow: CombinerWithInfluenceTracker, value: ValueRow): CombinerWithInfluenceTracker = {
@@ -270,12 +273,34 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
       new PairProvenanceDefaultRDD[K,C](combinerRowResults)
     }
   }
-
+  
+  override def aggregateByKey[U: ClassTag](zeroValue: U, partitioner: Partitioner)
+                                             (seqOp: (U, V) => U,
+                                              combOp: (U, U) => U,
+                                              enableUDFAwareProv: Option[Boolean],
+                                              influenceTrackerCtr: Option[() => InfluenceTracker[V]])
+  : PairProvenanceRDD[K,U] = {
+    // Serialize the zero value to a byte array so that we can get a new clone of it on each key
+    val zeroBuffer = SparkEnv.get.serializer.newInstance().serialize(zeroValue)
+    val zeroArray = new Array[Byte](zeroBuffer.limit)
+    zeroBuffer.get(zeroArray)
+    
+    lazy val cachedSerializer = SparkEnv.get.serializer.newInstance()
+    val createZero = () => cachedSerializer.deserialize[U](ByteBuffer.wrap(zeroArray))
+    
+    // We will clean the combiner closure later in `combineByKey`
+    val cleanedSeqOp = seqOp // TODO: clean closure
+    // rdd.context.clean(seqOp)
+    combineByKeyWithClassTag[U]((v: V) => cleanedSeqOp(createZero(), v),
+                                   cleanedSeqOp, combOp, partitioner, enableUDFAwareProv = enableUDFAwareProv,
+                                   influenceTrackerCtr = influenceTrackerCtr)
+  }
+  
  /**
    * Moving from jteoh branch
    *
    * */
- override def aggregateByKey[U: ClassTag](zeroValue: U, partitioner: Partitioner)
+ override def aggregateByKeyOld[U: ClassTag](zeroValue: U, partitioner: Partitioner)
                                          (seqOp: (U, V) => U,
                                           combOp: (U, U) => U,
                                           enableUDFAwareProv: Option[Boolean],
@@ -292,7 +317,7 @@ class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
    // We will clean the combiner closure later in `combineByKey`
    val cleanedSeqOp = seqOp // TODO: clean closure
    // rdd.context.clean(seqOp)
-   combineByKeyWithClassTag[U]((v: V) => cleanedSeqOp(createZero(), v),
+   combineByKeyWithClassTagOld[U]((v: V) => cleanedSeqOp(createZero(), v),
      cleanedSeqOp, combOp, partitioner, enableUDFAwareProv = enableUDFAwareProv,
                                inflFunction = inflFunction)
  }

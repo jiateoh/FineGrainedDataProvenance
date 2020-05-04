@@ -1,12 +1,13 @@
-package examples.benchmarks.provenance_benchmarks
+package examples.benchmarks.influence_benchmarks
 
 import org.apache.spark.{SparkConf, SparkContext}
 import provenance.data.RoaringBitmapProvenance
+import provenance.rdd.FilterInfluenceTracker
 import sparkwrapper.SparkContextWithDP
 import symbolicprimitives.Utils
 
 
-object StudentGradesProvenanceV2 {
+object StudentGradesInfluenceV2 {
   
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
@@ -89,7 +90,15 @@ object StudentGradesProvenanceV2 {
         val mean = meanA + delta * countB / count
         val m2 = m2A + m2B + (delta * delta) * (countA * countB / count)
         (count, mean, m2)
-    }
+    },
+     enableUDFAwareProv = Some(false),
+     influenceTrackerCtr = Some(
+       () => FilterInfluenceTracker(value => value <= 2.3 || value >= 3.3)
+       //() => FilterInfluenceTracker(value => true[)
+       //() => FilterInfluenceTracker(value => false)
+       //() => TopNInfluenceTracker(5)
+       //AllInfluenceTracker[Double]
+       )
      )
 
    val deptGpaMeanVar = deptGpaStats.mapValues({case (count, mean, m2) =>
