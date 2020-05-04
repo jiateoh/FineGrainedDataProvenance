@@ -18,7 +18,7 @@ object StudentGradesDataGeneratorV2 {
     val sparkConf = new SparkConf()
     var logFile = ""
     var partitions = 10
-    var dataper  = 500000
+    var dataper  = 50000
     if(args.length < 2) {
       sparkConf.setMaster("local[6]")
       sparkConf.setAppName("StudentGradesGenerator").set("spark.executor.memory", "2g")
@@ -34,7 +34,7 @@ object StudentGradesDataGeneratorV2 {
     
     
     val depts = Seq("EE", "CS", "MATH", "Physics ", "STATS")
-    val courseNums = Seq(0,100).flatMap(x => (1 to 50).map(_ + x))
+    val courseNums = Seq(0,100).flatMap(x => (1 to 20).map(_ + x))
     val courses = depts.flatMap(dept => courseNums.map(dept + _))
     
     val random = new Random(42) // fixed seed for reproducability
@@ -54,8 +54,15 @@ object StudentGradesDataGeneratorV2 {
         
         // give CS courses more variance (note we don't actually care about the mean)
         // very low probability
-        val grade = if(course.startsWith("CS") && random.nextDouble() < 0.01) {
-          random.nextInt(20) // give them a fairly bad grade
+        //        val grade = if(course.startsWith("CS") && random.nextDouble() < 0.01) {
+        //          random.nextInt(20) // give them a fairly bad grade
+        //        } else {
+        //          random.nextInt(35) + 65
+        //        }
+        
+        // new strat: if course is CS11 then give everybody A's or very high score at least.
+        val grade = if(course == "CS11") {
+          random.nextInt(10) + 90
         } else {
           random.nextInt(35) + 65
         }
