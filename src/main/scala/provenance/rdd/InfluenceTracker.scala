@@ -123,7 +123,7 @@ case class BottomNInfluenceTracker[T](override val maxSize: Int)(implicit orderi
 case class TopNInfluenceTracker[T](override val maxSize: Int)(implicit ordering: Ordering[T])
   extends OrderedNInfluenceTracker[T](maxSize)(ordering.reverse)
 
-class UnionInfluenceTracker[T](val trackers: InfluenceTracker[T]*) extends InfluenceTracker[T] {
+case class UnionInfluenceTracker[T](trackers: InfluenceTracker[T]*) extends InfluenceTracker[T] {
   override def init(value: ProvenanceRow[T]): UnionInfluenceTracker[T] ={
     trackers.foreach(_.init(value))
     this
@@ -189,6 +189,85 @@ case class FilterInfluenceTracker[T](filterFn: T => Boolean) extends InfluenceTr
     values.foldLeft(DummyProvenance.create())(_.merge(_))
 }
 
+/** Naive outlier detection that retains potential outliers based on a streaming mean and
+  * variance (normal distribution), with a 'warmup' built-in buffer for early anomalies. */
+case class StreamingOutlierInfluenceTracker(zscoreThreshold: Double = 3.0, warmup: Int = 100)
+  extends InfluenceTracker[Double] {
+  // roughly based off of https://towardsdatascience.com/easy-outlier-detection-in-data-streams-3089bfefe528
+  // and welrod's https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
+  private var mean = 0.0
+  private var m2 = 0.0
+  private var count = 0.0
+  private var outliers = ArrayBuffer[ProvenanceRow[Double]]()
+  
+  private def variance = m2/count
+  
+  private def exceedsThreshold(elem: Double): Boolean = {
+    (Math.abs(elem - mean) / Math.sqrt(variance)) >= zscoreThreshold
+  }
+  private def isOutlier(elem: Double): Boolean = {
+    val result = count < warmup || exceedsThreshold(elem)
+    if (result && count >= warmup) {
+      val test = Math.abs(elem - mean) / Math.sqrt(variance)
+      println(s"Test is $test for $elem, $mean, $variance")
+    }
+    result
+  }
+  private def checkOutlier(value: ProvenanceRow[Double]): Unit = {
+    val elem = value._1
+    if(isOutlier(elem)) {
+      outliers += value
+    }
+  }
+  private def update(value: ProvenanceRow[Double]): StreamingOutlierInfluenceTracker = {
+    checkOutlier(value)
+    val elem = value._1
+    count += 1
+    val delta = elem - mean
+    mean += delta / count
+    val delta2 = elem - mean
+    m2 += delta * delta2
+    this
+  }
+  
+  private def recheckOutliers() = {
+    outliers = outliers.filter(row => isOutlier(row._1))
+  }
+  
+  override def init(value: ProvenanceRow[Double]): StreamingOutlierInfluenceTracker = update(value)
+  
+  override def mergeValue(value: ProvenanceRow[Double]): StreamingOutlierInfluenceTracker = update(value)
+  
+  override def mergeTracker(other: InfluenceTracker[Double]): StreamingOutlierInfluenceTracker = {
+    other match {
+      case o: StreamingOutlierInfluenceTracker =>
+        val (countA, meanA, m2A) = (count, mean, m2)
+        val (countB, meanB, m2B) = (o.count, o.mean, o.m2)
+        count = countA + countB
+        val delta = meanB - meanA
+        mean = meanA + delta * countB / count
+        m2 = m2A + m2B + (delta * delta) * (countA * countB / count)
+        
+        // refilter outliers
+        outliers ++= o.outliers
+        recheckOutliers()
+        
+        this
+      case _ =>
+        throw new UnsupportedOperationException(s"Cannot compare ${this.getClass.getSimpleName} " +
+                                                  "with other InfluenceTracker types")
+    }
+  }
+  
+  /** Return the provenance tracked in this tracker. Note that this method may be destructive and
+    * should only be called once! *  */
+  override def computeProvenance(): Provenance = {
+    // Need to recheck stored outliers, without the 'grace' period from warmup.
+    val finalOutliers = outliers.filter(row => exceedsThreshold(row._1))
+    finalOutliers.foldLeft(DummyProvenance.create())(
+      {case (unionProv, provRow) => unionProv.merge(provRow._2)})
+  }
+}
 object InfluenceTrackerExample{
   def main(args: Array[String]): Unit = {
     val first = MaxInfluenceTracker[Int]
