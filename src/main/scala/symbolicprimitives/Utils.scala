@@ -2,9 +2,9 @@ package symbolicprimitives
 
 import org.apache.spark.rdd.RDD
 import org.roaringbitmap.RoaringBitmap
-import provenance.data.{DummyProvenance, InfluenceMarker, Provenance}
+import provenance.data.{DummyProvenance, InfluenceMarker, Provenance, RoaringBitmapProvenance}
 import provenance.data.InfluenceMarker.InfluenceMarker
-import provenance.rdd.{ CombinerWithInfluence, ProvenanceRow}
+import provenance.rdd.{CombinerWithInfluence, ProvenanceRow}
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -42,8 +42,19 @@ object Utils {
     val rdd = zipped_input_RDD
       .filter(s => rr.contains(s._2.asInstanceOf[Int]))
       .map(s => s._1)
-    rdd.collect().foreach(println)
     rdd
+  }
+  
+  def retrieveProvenance(prov: Provenance): RDD[String] = {
+    prov match {
+      case rp: RoaringBitmapProvenance =>
+        retrieveProvenance(rp.bitmap)
+      case _: DummyProvenance =>
+        retrieveProvenance(new RoaringBitmap())
+      case _ =>
+        throw new UnsupportedOperationException(s"Unsupported provenance retrieval for object " +
+                                                  s"$prov")
+    }
   }
 
   /** Utility method to extract symbolic provenance from object to construct provenance row, if
