@@ -2,6 +2,7 @@ package examples.benchmarks.provenance_benchmarks
 
 import org.apache.spark.{SparkConf, SparkContext}
 import provenance.data.RoaringBitmapProvenance
+import provenance.rdd.PairProvenanceRDD
 import sparkwrapper.SparkContextWithDP
 import symbolicprimitives.Utils
 
@@ -49,7 +50,7 @@ object StudentGradesProvenanceV2 {
     
     // Using the written out version for motivation example
     //val courseGpaAvgs = AggregationFunctions.averageByKey(courseGpas)
-    val courseGpaAvgs =
+    val courseGpaAvgs: PairProvenanceRDD[String, Double] =
     courseGpas.aggregateByKey((0.0, 0))(
       {case ((sum, count), next) => (sum + next, count+1)},
       {case ((sum1, count1), (sum2, count2)) => (sum1+sum2,count1+count2)}
@@ -98,15 +99,21 @@ object StudentGradesProvenanceV2 {
     })
     
     val out = deptGpaMeanVar
+    println("Department, (Mean, Variance)")
     val outCollect =  out.collectWithProvenance()
     outCollect.foreach(println)
-    println(outCollect.length)
-    val csRecord = outCollect.filter(_._1._1 == "CS").head
-    val csProvenance = csRecord._2
-    val trace = Utils.retrieveProvenance(csProvenance.asInstanceOf[RoaringBitmapProvenance]
+    
+    val tempDebug = true
+    if(tempDebug) {
+      println(outCollect.length)
+      val csRecord = outCollect.filter(_._1._1 == "CS").head
+      val csProvenance = csRecord._2
+      val trace = Utils.retrieveProvenance(csProvenance.asInstanceOf[RoaringBitmapProvenance]
                                                        .bitmap)
-    println("----- TRACE RESULTS ------")
-    trace.take(100).foreach(println)
+      println("----- TRACE RESULTS ------")
+      trace.take(100).foreach(println)
+    }
+    
   }
   
 //  override def execute(input1: RDD[String], input2: RDD[String]): RDD[String] = {
