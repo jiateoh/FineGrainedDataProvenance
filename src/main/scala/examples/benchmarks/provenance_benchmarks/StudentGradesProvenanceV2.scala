@@ -103,7 +103,7 @@ object StudentGradesProvenanceV2 {
     val outCollect =  out.collectWithProvenance()
     outCollect.foreach(println)
     
-    val tempDebug = true
+    val tempDebug = false
     if(tempDebug) {
       println(outCollect.length)
       val csRecord = outCollect.filter(_._1._1 == "CS").head

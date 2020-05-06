@@ -39,6 +39,7 @@ object AggregationFunctions {
       {case ((sum1, count1), (sum2, count2)) => (sum1+sum2,count1+count2)}
     ).mapValues({case (sum, count) => sum.toDouble/count})
   }
+  
   def averageByKey[K: ClassTag](input: ProvenanceRDD[(K, Double)])
                                (implicit a: DummyImplicit) : PairProvenanceRDD[K, Double] = {
     input.aggregateByKey((0.0, 0))(
@@ -83,4 +84,6 @@ object AggregationFunctions {
     // If we didn't define udfAware flag globally, we could override enableUDFAwareProv here
     .mapValues({ case (min, max) => max - min })
   }
+  
+  // TODO add mean+var by key function
 }

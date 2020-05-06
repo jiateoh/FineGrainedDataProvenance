@@ -2,7 +2,7 @@ package examples.benchmarks.influence_benchmarks
 
 import org.apache.spark.{SparkConf, SparkContext}
 import provenance.data.RoaringBitmapProvenance
-import provenance.rdd.FilterInfluenceTracker
+import provenance.rdd.{BottomNInfluenceTracker, FilterInfluenceTracker, StreamingOutlierInfluenceTracker, TopNInfluenceTracker, UnionInfluenceTracker}
 import sparkwrapper.SparkContextWithDP
 import symbolicprimitives.Utils
 
@@ -67,6 +67,7 @@ object StudentGradesInfluenceV2 {
     // (based on provided python code)
     // count is initialized as a double to avoid accidental int division
     // variance returned is population variance
+    // TODO: Refactor into AggregationUDF and provide an influence-based implementation
     val deptGpaStats = deptGpas.aggregateByKey((0.0, 0.0, 0.0))({
       // https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
       // this is essentially the scala implementation of the python example update
@@ -93,10 +94,21 @@ object StudentGradesInfluenceV2 {
     },
      enableUDFAwareProv = Some(false),
      influenceTrackerCtr = Some(
-       () => FilterInfluenceTracker(value => value <= 2.3 || value >= 3.3)
-       //() => FilterInfluenceTracker(value => true[)
-       //() => FilterInfluenceTracker(value => false)
-       //() => TopNInfluenceTracker(5)
+//                     {
+//                       val mean = 2.7437360761067904
+//                       val variance = 0.039061295613521535
+//                       val stdDev = Math.sqrt(variance)
+//                       val lower = mean - 3 * stdDev // 2.1508181555463692
+//                       val upper = mean + 3 * stdDev // 3.3366539966672115
+//                       println(s"Filter Influence tracker with range $lower to $upper")
+//                       () => FilterInfluenceTracker(value => (value <= lower) || (value >= upper))
+//                     }
+            () => StreamingOutlierInfluenceTracker(zscoreThreshold = 3.0)
+       
+           //() => FilterInfluenceTracker(value => value <= 2.3 || value >= 3.3)
+           //() => TopNInfluenceTracker(5)
+           //() => UnionInfluenceTracker(TopNInfluenceTracker(5), BottomNInfluenceTracker(5))
+       
        //AllInfluenceTracker[Double]
        )
      )
@@ -110,10 +122,9 @@ object StudentGradesInfluenceV2 {
     val outCollect =  out.collectWithProvenance()
     outCollect.foreach(println)
     println(outCollect.length)
-    val csRecord = outCollect.filter(_._1._1 == "CS").head
+    val csRecord = outCollect.filter(_._1._1 == "CS").head // get the CS row
     val csProvenance = csRecord._2
-    val trace = Utils.retrieveProvenance(csProvenance.asInstanceOf[RoaringBitmapProvenance]
-                                                       .bitmap)
+    val trace = Utils.retrieveProvenance(csProvenance)
     println("----- TRACE RESULTS ------")
     trace.take(100).foreach(println)
   }
