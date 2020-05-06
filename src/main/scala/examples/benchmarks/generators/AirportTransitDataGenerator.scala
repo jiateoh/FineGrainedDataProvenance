@@ -34,10 +34,16 @@ object AirportTransitDataGenerator {
   {
     val sparkConf = new SparkConf()
     var logFile = ""
-    var partitions = 1
-    var dataper  = 9000000
+
+
+    var partitions = 40
+    var dataper  = 900000
+    var fault_rate = 0.000001
+    def faultInjector()  = if(Random.nextInt(dataper*partitions) < dataper*partitions* fault_rate) true else false
+
+
     if(args.length < 2) {
-      sparkConf.setMaster("local[6]")
+      sparkConf.setMaster("local[5]")
       sparkConf.setAppName("TermVector_LineageDD").set("spark.executor.memory", "2g")
       // logFile =  "/Users/malig/workspace/git/BigSiftUI/airportdata"
       logFile =  "datasets/airportdata"
@@ -60,7 +66,10 @@ object AirportTransitDataGenerator {
         val arrival = (Random.nextInt(24)).toString + ":" + (Random.nextInt(60)).toString
         val transit:Float = (Random.nextInt(4)+1).toFloat/2f
         val dep  = addTime(arrival, transit)
-
+        if(faultInjector()){
+          s"""$date,$passid,$passid:0,$dep,$airportcode"""
+        }
+        else
         s"""$date,$passid,$arrival,$dep,$airportcode"""
       }.iterator}.saveAsTextFile(logFile)
 

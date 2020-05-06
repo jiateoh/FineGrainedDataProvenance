@@ -9,19 +9,20 @@ import scala.util.Random
   * Copied from BigSiftUI by jteoh on 4/17/20
   */
 object WeatherDataGenerator {
+  var logFile = ""
+  var partitions = 10
+  var dataper  = 100
+  var fault_rate = 0.000001
+
   def main(args:Array[String]) =
   {
     val sparkConf = new SparkConf()
-    var logFile = ""
-    var partitions = 16
-    var dataper  = 2
+
     if(args.length < 2) {
       sparkConf.setMaster("local[6]")
       sparkConf.setAppName("TermVector_LineageDD")//.set("spark.executor.memory", "2g")
       logFile =  "datasets/weatherdata"
       //logFile = args(0)
-      partitions = 1
-      dataper = 50
     }else{
       logFile = args(0)
       partitions =args(1).toInt
@@ -50,8 +51,14 @@ object WeatherDataGenerator {
     
     
   }
+
+
+  def faultInjector(): Boolean ={
+    if(Random.nextInt(dataper *30*12*116* partitions) < dataper *30*12*116* partitions*fault_rate)
+     true else false
+  }
   def getLowSnow(): String = {
-    if(Random.nextInt(90000000) == 99999){
+    if(faultInjector()){
       return  "90in"
     }
     if(Random.nextInt(2) == 0){
@@ -61,7 +68,7 @@ object WeatherDataGenerator {
     }
   }
   def getHighSnow(): String ={
-    if(Random.nextInt(90000000) == 99999){
+    if(faultInjector()){
       return  "90in"
     }
     if(Random.nextInt(2) == 0){
@@ -71,3 +78,4 @@ object WeatherDataGenerator {
     }
   }
 }
+//2,088,000
