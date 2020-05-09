@@ -4,7 +4,7 @@ import org.apache.spark.rdd.RDD
 import org.roaringbitmap.RoaringBitmap
 import provenance.data.{DummyProvenance, InfluenceMarker, Provenance, RoaringBitmapProvenance}
 import provenance.data.InfluenceMarker.InfluenceMarker
-import provenance.rdd.{CombinerWithInfluence, ProvenanceRow}
+import provenance.rdd.{BaseProvenanceRDD, CombinerWithInfluence, FlatProvenanceDefaultRDD, ProvenanceRDD, ProvenanceRow}
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -31,6 +31,14 @@ object Utils {
   def print(s: String): Unit = {
     println("\n" + s)
   }
+  
+  def measureTimeMillis[T](block: => T): (T, Long) = {
+    val startTime = System.currentTimeMillis()
+    val result = block
+    val finishTime = System.currentTimeMillis()
+    val elapsed = finishTime - startTime
+    (result, elapsed)
+  }
 
   private var zipped_input_RDD: RDD[(String, Long)] = null;
   def setInputZip(rdd: RDD[(String, Long)]): RDD[(String, Long)] = {
@@ -55,6 +63,12 @@ object Utils {
         throw new UnsupportedOperationException(s"Unsupported provenance retrieval for object " +
                                                   s"$prov")
     }
+  }
+  
+  def retrieveProvenance(prov: Provenance, base: ProvenanceRDD[String]): RDD[String] = {
+    val inputRDD = base.asInstanceOf[FlatProvenanceDefaultRDD[String]].rdd.map(_._1)
+    zipped_input_RDD =  inputRDD.zipWithUniqueId()
+    retrieveProvenance(prov)
   }
 
   /** Utility method to extract symbolic provenance from object to construct provenance row, if

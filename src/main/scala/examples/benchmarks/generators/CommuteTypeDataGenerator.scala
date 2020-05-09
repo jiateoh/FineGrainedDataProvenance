@@ -1,7 +1,9 @@
 package examples.benchmarks.generators
 
 import java.awt.image.ImageConsumer
+import java.io.File
 
+import org.apache.commons.io.FileUtils
 import org.apache.spark.{SparkConf, SparkContext}
 
 import scala.util.Random
@@ -16,9 +18,15 @@ object CommuteTypeDataGenerator {
   def main(args:Array[String]) =
   {
     val sparkConf = new SparkConf()
+    val random = new Random(42) // fixed seed for reproducability
     var logFile = ""
-    var partitions = 2
-    var dataper  = 50
+    var partitions = 10
+    var dataper  = 1000000
+    val faultRate = 3.0 / 100
+    def shouldInjectFault(dis: Int, time: Int): Boolean = {
+      (dis / time > 40) && random.nextDouble() <= faultRate
+    }
+    
     if(args.length < 2) {
       sparkConf.setMaster("local[6]")
       sparkConf.setAppName("TermVector_LineageDD").set("spark.executor.memory", "2g")
@@ -30,19 +38,26 @@ object CommuteTypeDataGenerator {
     }
     val trips = logFile + "trips"
     val zip = logFile + "zipcode"
+  
+    FileUtils.deleteQuietly(new File(trips))
+    FileUtils.deleteQuietly(new File(zip))
     
     val sc = new SparkContext(sparkConf)
     sc.parallelize(Seq[Int]() , partitions).mapPartitions { _ =>
-      (1 to dataper).flatMap{_ =>
+      (1 to dataper).map{_ =>
         def zipcode = "9" + "0"+ "0" + Random.nextInt(10).toString + Random.nextInt(10).toString
         var z1 = zipcode
         var z2 = zipcode
         val dis = Math.abs(z1.toInt - z2.toInt)*100 +  Random.nextInt(10)
         val time = Math.max(dis/(Random.nextInt(50)+10), 1) // time should be at least 1 to avoid
         // divide-by-zero error
-        var list = List[String]()
-        list = s"""sr,${z1},${z2},$dis,$time""" :: list
-        list}.iterator}.saveAsTextFile(trips)
+        val adjustedDis = if(shouldInjectFault(dis, time)) {
+          dis + (600 * time) // an extra 500 mph or so
+        } else {
+          dis
+        }
+        s"""sr,${z1},${z2},$adjustedDis,$time"""
+        }.toIterator}.saveAsTextFile(trips)
     sc.textFile(trips).flatMap(s => Array(s.split(",")(1) , s.split(",")(2))).distinct().map(s =>s"""$s,${(s.toInt%100).toString}""" )
       .saveAsTextFile(zip)
   }

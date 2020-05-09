@@ -1,10 +1,10 @@
-package examples.benchmarks.provenance_benchmarks
+package examples.benchmarks.influence_benchmarks
 
 import examples.benchmarks.AggregationFunctions
 import org.apache.spark.{SparkConf, SparkContext}
-import provenance.rdd.FlatProvenanceDefaultRDD
-import sparkwrapper.SparkContextWithDP
 import provenance.rdd.ProvenanceRDD._
+import provenance.rdd.{IntStreamingOutlierInfluenceTracker, StreamingOutlierInfluenceTracker, TopNInfluenceTracker}
+import sparkwrapper.SparkContextWithDP
 import symbolicprimitives.Utils
 
 /**
@@ -12,7 +12,7 @@ import symbolicprimitives.Utils
   * Copied from BigTest by jteoh on 4/15/20: https://github
   * .com/maligulzar/BigTest/blob/JPF-integrated/benchmarks/src/subject/programs/CommuteType.scala
   */
-object CommuteTypeProvenance {
+object CommuteTypeInfluence {
   
   def main(args: Array[String]) {
     val conf = new SparkConf()
@@ -55,9 +55,6 @@ object CommuteTypeProvenance {
                       val cols = s.split(",")
                       (cols(1), Integer.parseInt(cols(3)) / Integer.parseInt(cols(4)))
                     }
-      
-      //trips.filter(_._2 > 200).take(10).foreach(println)
-      //System.exit(-1)
       val locations = locationLines
                         .map { s =>
                           val cols = s.split(",")
@@ -81,10 +78,15 @@ object CommuteTypeProvenance {
         }
         
         //val out = AggregationFunctions.sumByKey(types)// types.reduceByKey(_ + _)
-        val out = AggregationFunctions.averageByKey(types)
+        val out = AggregationFunctions.averageByKey(types,
+                                                    enableUDFAwareProv = Some(false),
+                                                    influenceTrackerCtr = Some(() =>
+                                                                                 TopNInfluenceTracker(1000)))
+                                                                               //IntStreamingOutlierInfluenceTracker(zscoreThreshold = 5)))
         val outCollect = out.collectWithProvenance()
         outCollect.foreach(println)
-        val trace = Utils.retrieveProvenance(outCollect.filter(_._1._1 == "car").head._2, tripLines)
+        val trace = Utils.retrieveProvenance(outCollect.filter(_._1._1 == "car").head._2,
+                                             tripLines)
         println("Traced: " + trace.count())
     }
     catch {

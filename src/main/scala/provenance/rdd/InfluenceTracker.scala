@@ -189,6 +189,39 @@ case class FilterInfluenceTracker[T](filterFn: T => Boolean) extends InfluenceTr
     values.foldLeft(DummyProvenance.create())(_.merge(_))
 }
 
+class ValueConverterInfluenceTracker[V, T](converter: V => T, var tracker: InfluenceTracker[T])
+extends InfluenceTracker[V] {
+  private def convert(row: ProvenanceRow[V]): ProvenanceRow[T] = (converter(row._1), row._2)
+  override def init(value: ProvenanceRow[V]): ValueConverterInfluenceTracker[V, T] = {
+    tracker = tracker.init(convert(value))
+    this
+  }
+  
+  override def mergeValue(value: ProvenanceRow[V]): ValueConverterInfluenceTracker[V, T] = {
+    tracker = tracker.mergeValue(convert(value))
+    this
+  }
+  
+  override def mergeTracker(other: InfluenceTracker[V]): ValueConverterInfluenceTracker[V, T] = {
+    other match {
+      case o: ValueConverterInfluenceTracker[V, T] =>
+        tracker = tracker.mergeTracker(o.tracker)
+        this
+      case _ =>
+        throw new UnsupportedOperationException(s"Cannot compare ${this.getClass.getSimpleName} " +
+                                                  "with other InfluenceTracker types")
+    }
+  }
+  
+  /** Return the provenance tracked in this tracker. Note that this method may be destructive and
+    * should only be called once! *  */
+  override def computeProvenance(): Provenance = tracker.computeProvenance()
+}
+
+case class IntStreamingOutlierInfluenceTracker(zscoreThreshold: Double = 3.0, warmup: Int = 100)
+  extends ValueConverterInfluenceTracker[Int, Double](_.toDouble,
+                                                      StreamingOutlierInfluenceTracker(zscoreThreshold, warmup))
+
 /** Naive outlier detection that retains potential outliers based on a streaming mean and
   * variance (normal distribution), with a 'warmup' built-in buffer for early anomalies. */
 case class StreamingOutlierInfluenceTracker(zscoreThreshold: Double = 3.0, warmup: Int = 100)
@@ -207,10 +240,6 @@ case class StreamingOutlierInfluenceTracker(zscoreThreshold: Double = 3.0, warmu
   }
   private def isOutlier(elem: Double): Boolean = {
     val result = count < warmup || exceedsThreshold(elem)
-    if (result && count >= warmup) {
-      val test = Math.abs(elem - mean) / Math.sqrt(variance)
-      println(s"Test is $test for $elem, $mean, $variance")
-    }
     result
   }
   private def checkOutlier(value: ProvenanceRow[Double]): Unit = {
@@ -268,6 +297,10 @@ case class StreamingOutlierInfluenceTracker(zscoreThreshold: Double = 3.0, warmu
       {case (unionProv, provRow) => unionProv.merge(provRow._2)})
   }
 }
+
+
+
+
 object InfluenceTrackerExample{
   def main(args: Array[String]): Unit = {
     val first = MaxInfluenceTracker[Int]

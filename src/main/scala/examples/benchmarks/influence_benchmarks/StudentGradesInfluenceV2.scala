@@ -103,7 +103,7 @@ object StudentGradesInfluenceV2 {
 //                       println(s"Filter Influence tracker with range $lower to $upper")
 //                       () => FilterInfluenceTracker(value => (value <= lower) || (value >= upper))
 //                     }
-            () => StreamingOutlierInfluenceTracker(zscoreThreshold = 3.0)
+            () => StreamingOutlierInfluenceTracker(zscoreThreshold = 4.0)
        
            //() => FilterInfluenceTracker(value => value <= 2.3 || value >= 3.3)
            //() => TopNInfluenceTracker(5)
@@ -119,14 +119,20 @@ object StudentGradesInfluenceV2 {
     })
     
     val out = deptGpaMeanVar
-    val outCollect =  out.collectWithProvenance()
-    outCollect.foreach(println)
-    println(outCollect.length)
-    val csRecord = outCollect.filter(_._1._1 == "CS").head // get the CS row
-    val csProvenance = csRecord._2
-    val trace = Utils.retrieveProvenance(csProvenance)
-    println("----- TRACE RESULTS ------")
-    trace.take(100).foreach(println)
+    val elapsed = Utils.measureTimeMillis({
+      val outCollect = out.collectWithProvenance()
+      println("Department, (Mean, Variance)")
+      outCollect.foreach(println)
+  
+      // Debugging
+      val csRecord = outCollect.filter(_._1._1 == "CS").head // get the CS row
+      val csProvenance = csRecord._2
+      val trace = Utils.retrieveProvenance(csProvenance)
+      println("----- TRACE RESULTS ------")
+      println("Count = " + trace.count())
+      //trace.take(100).foreach(println)
+    })
+    println(s"Elapsed time: $elapsed ms")
   }
   
 //  override def execute(input1: RDD[String], input2: RDD[String]): RDD[String] = {

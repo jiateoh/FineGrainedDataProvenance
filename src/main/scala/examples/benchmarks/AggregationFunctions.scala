@@ -1,6 +1,6 @@
 package examples.benchmarks
 
-import provenance.rdd.{PairProvenanceRDD, ProvenanceRDD}
+import provenance.rdd.{InfluenceTracker, PairProvenanceRDD, ProvenanceRDD}
 import ProvenanceRDD._
 import symbolicprimitives.SymImplicits._
 import symbolicprimitives._
@@ -33,10 +33,14 @@ object AggregationFunctions {
                               (implicit a: DummyImplicit): PairProvenanceRDD[K, SymInt] =
     input.reduceByKey(_+_)
   
-  def averageByKey[K: ClassTag](input: ProvenanceRDD[(K, Int)]): PairProvenanceRDD[K, Double] = {
+  def averageByKey[K: ClassTag](input: ProvenanceRDD[(K, Int)],
+                                enableUDFAwareProv: Option[Boolean] = None,
+                                influenceTrackerCtr: Option[() => InfluenceTracker[Int]] = None): PairProvenanceRDD[K, Double] = {
     input.aggregateByKey((0L, 0))(
       {case ((sum, count), next) => (sum + next, count+1)},
-      {case ((sum1, count1), (sum2, count2)) => (sum1+sum2,count1+count2)}
+      {case ((sum1, count1), (sum2, count2)) => (sum1+sum2,count1+count2)},
+      enableUDFAwareProv = enableUDFAwareProv,
+      influenceTrackerCtr = influenceTrackerCtr
     ).mapValues({case (sum, count) => sum.toDouble/count})
   }
   

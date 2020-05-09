@@ -99,20 +99,21 @@ object StudentGradesProvenanceV2 {
     })
     
     val out = deptGpaMeanVar
-    println("Department, (Mean, Variance)")
-    val outCollect =  out.collectWithProvenance()
-    outCollect.foreach(println)
+    val elapsed = Utils.measureTimeMillis({
+      val outCollect = out.collectWithProvenance()
+      println("Department, (Mean, Variance)")
+      outCollect.foreach(println)
     
-    val tempDebug = false
-    if(tempDebug) {
-      println(outCollect.length)
-      val csRecord = outCollect.filter(_._1._1 == "CS").head
+      // Debugging
+      val csRecord = outCollect.filter(_._1._1 == "CS").head // get the CS row
       val csProvenance = csRecord._2
-      val trace = Utils.retrieveProvenance(csProvenance.asInstanceOf[RoaringBitmapProvenance]
-                                                       .bitmap)
+      val trace = Utils.retrieveProvenance(csProvenance)
       println("----- TRACE RESULTS ------")
-      trace.take(100).foreach(println)
-    }
+      println("Count = " + trace.count())
+      //trace.take(100).foreach(println)
+    })
+    println(s"Elapsed time: $elapsed ms")
+    
     
   }
   

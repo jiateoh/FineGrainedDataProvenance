@@ -6,7 +6,7 @@ import symbolicprimitives.SymBase
 
 import scala.reflect.ClassTag
 
-abstract class BaseProvenanceRDD[T : ClassTag](baseRDD: RDD[_]) extends ProvenanceRDD[T] {
+abstract class BaseProvenanceRDD[T : ClassTag](val baseRDD: RDD[_]) extends ProvenanceRDD[T] {
 
   /** Specialized flatMap to detect if a ProvenanceGrouping is used. */
   // def flatMap[U: ClassTag](f: T => ProvenanceGrouping[U]): FlatProvenanceDefaultRDD[U]
