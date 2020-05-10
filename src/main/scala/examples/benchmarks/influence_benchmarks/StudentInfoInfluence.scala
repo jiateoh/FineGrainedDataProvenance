@@ -1,8 +1,9 @@
 package examples.benchmarks.influence_benchmarks
 
+import examples.benchmarks.AggregationFunctions
 import org.apache.spark.{SparkConf, SparkContext}
 import provenance.data.InfluenceMarker
-import provenance.rdd.MaxInfluenceTracker
+import provenance.rdd.{IntStreamingOutlierInfluenceTracker, MaxInfluenceTracker, StreamingOutlierInfluenceTracker}
 import sparkwrapper.SparkContextWithDP
 
 /**
@@ -49,12 +50,13 @@ object StudentInfoInfluence {
                                                }
                                                (pair._1, moving_average)
                                              })**/
+    // Because this program currently defines 4 partitions, we don't have an explicit
+    // AggregationFunction UDF for it.
     val average_age_by_grade = grade_age_pair.aggregateByKey((0L, 0), 4)(
       {case ((sum, count), next) => (sum + next, count+1)},
       {case ((sum1, count1), (sum2, count2)) => (sum1+sum2,count1+count2)},
       enableUDFAwareProv = None,
-      //inflFunction = Some(InfluenceMarker.MaxWithTiesFn[Int]))
-      influenceTrackerCtr = Some(()=> MaxInfluenceTracker[Int]))
+      influenceTrackerCtr = Some(()=> IntStreamingOutlierInfluenceTracker()))
     .mapValues({case (sum, count) => sum.toDouble/count})
     //val out = average_age_by_grade.collect()
     //out.foreach(println)

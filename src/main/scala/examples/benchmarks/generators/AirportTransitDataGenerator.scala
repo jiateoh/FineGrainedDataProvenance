@@ -50,7 +50,7 @@ object AirportTransitDataGenerator {
     }else{
       logFile = "hdfs://scai01.cs.ucla.edu:9000//clash/datasets/bigsift/weather"
       logFile = args(3)
-      partitions =args(1).toInt
+      partitions = args(1).toInt
       dataper = args(2).toInt
     }
     if(new File(logFile).exists()){

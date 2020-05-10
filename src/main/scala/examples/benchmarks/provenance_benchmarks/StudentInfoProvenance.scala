@@ -47,7 +47,8 @@ object StudentInfoProvenance {
                                                }
                                                (pair._1, moving_average)
                                              })**/
-    // Note: this used to use numPartitions = 4, but was removed for simplicity.
+    // Because this program currently defines 4 partitions, we don't have an explicit
+    // AggregationFunction UDF for it.
     val average_age_by_grade = grade_age_pair.aggregateByKey((0L, 0), 4)(
       {case ((sum, count), next) => (sum + next, count+1)},
       {case ((sum1, count1), (sum2, count2)) => (sum1+sum2,count1+count2)},
