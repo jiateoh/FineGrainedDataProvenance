@@ -20,17 +20,17 @@ object CommuteTypeDataGenerator {
     val sparkConf = new SparkConf()
     val random = new Random(42) // fixed seed for reproducability
     var logFile = ""
-    var partitions = 10
-    var dataper  = 1000000
-    val faultRate = 3.0 / 100
+    var partitions = 100
+    var dataper  = 500000
+    val faultRate = 1.0 / 100000
     def shouldInjectFault(dis: Int, time: Int): Boolean = {
       (dis / time > 40) && random.nextDouble() <= faultRate
     }
     
     if(args.length < 2) {
       sparkConf.setMaster("local[6]")
-      sparkConf.setAppName("TermVector_LineageDD").set("spark.executor.memory", "2g")
-      logFile =  "datasets/"
+      sparkConf.setAppName("Commute_LineageDD").set("spark.executor.memory", "2g")
+      logFile =  "datasets/commute/"
     }else{
       logFile = args(0)
       partitions =args(1).toInt
