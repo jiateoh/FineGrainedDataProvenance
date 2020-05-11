@@ -50,9 +50,9 @@ object AirportTransitSymbolic {
   def getDiff(arr: SymString, dep: SymString): SymInt = {
     val arr_min = arr.split(":")(0).toInt * 60 + arr.split(":")(1).toInt
     val dep_min = dep.split(":")(0).toInt * 60 + dep.split(":")(1).toInt
-    // if(dep_min - arr_min < 0){
-    //  return 24*60 + dep_min - arr_min
-    // }
+    if(dep_min - arr_min < 0){
+      return dep_min - arr_min + 24*60
+    }
     return dep_min - arr_min
   }
   

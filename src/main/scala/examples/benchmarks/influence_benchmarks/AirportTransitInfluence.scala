@@ -2,7 +2,7 @@ package examples.benchmarks.influence_benchmarks
 
 import org.apache.spark.{SparkConf, SparkContext}
 import provenance.data.InfluenceMarker
-import provenance.rdd.{MaxInfluenceTracker, TopNInfluenceTracker}
+import provenance.rdd.{AbsoluteTopNIntInfluenceTracker, IntStreamingOutlierInfluenceTracker, MaxInfluenceTracker, StreamingOutlierInfluenceTracker, TopNInfluenceTracker}
 import sparkwrapper.SparkContextWithDP
 import symbolicprimitives.{SymInt, SymString, Utils}
 
@@ -47,17 +47,42 @@ object AirportTransitInfluence {
     //val out = fil.reduceByKey((a: Int, b: Int) => a + b, InfluenceMarker.MaxFn[Int])
     val out = fil.reduceByKey((a: Int, b: Int) => a + b,
                               //() => MaxInfluenceTracker[Int])
-                              () => TopNInfluenceTracker[Int](5))
+                              //() => TopNInfluenceTracker[Int](5))
+                              //() => IntStreamingOutlierInfluenceTracker()
+                              () => AbsoluteTopNIntInfluenceTracker(1)
+                              )
     
-    out.collectWithProvenance().foreach(println)
+    val (outResults, collectTime) = Utils.measureTimeMillis(out.collectWithProvenance())
+    //outResults.foreach(println)
+    
+    val debugSet = outResults.filter(_._1._2 < 0) // testFn
+    val totalCount = input.rdd.count()
+    val bugCount = map.values.filter(_ < 0).rdd.count() // testFn on the diffs from input data
+    
+    val combinedProvenance = debugSet.map(_._2).reduce(_.merge(_))
+    val (traceResults, traceTime) =
+      Utils.measureTimeMillis(Utils.retrieveProvenance(combinedProvenance).collect())
+    val traceCount = traceResults.length
+    println("DEBUG")
+    debugSet.foreach(println)
+    println("------------------")
+    println("TRACE")
+    traceResults.foreach(println)
+    println("-------------")
+    println(s"Collect time: $collectTime")
+    println(s"Total count: $totalCount")
+    println(s"Number of faults: $bugCount")
+    println(s"Trace time: $traceTime")
+    println(s"Trace count: $traceCount") // visual inspection needed to confirm counts
+    
   }
   
   def getDiff(arr: String, dep: String): Int = {
     val arr_min = arr.split(":")(0).toInt * 60 + arr.split(":")(1).toInt
     val dep_min = dep.split(":")(0).toInt * 60 + dep.split(":")(1).toInt
-     if(dep_min - arr_min < 0){
-     return 24*60 + dep_min - arr_min
-     }
+    if(dep_min - arr_min < 0){
+      return 24*60 + dep_min - arr_min
+    }
     return dep_min - arr_min
   }
   

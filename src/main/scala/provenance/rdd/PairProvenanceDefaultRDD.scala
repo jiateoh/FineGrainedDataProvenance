@@ -11,7 +11,7 @@ import java.nio.ByteBuffer
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
-class PairProvenanceDefaultRDD[K, V](val rdd: RDD[(K, ProvenanceRow[V])])(
+class PairProvenanceDefaultRDD[K, V](override val rdd: RDD[(K, ProvenanceRow[V])])(
     implicit val kct: ClassTag[K],
     implicit val vct: ClassTag[V])
     extends BaseProvenanceRDD[(K, V)](rdd)
