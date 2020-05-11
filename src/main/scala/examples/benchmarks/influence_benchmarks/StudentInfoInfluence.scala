@@ -5,6 +5,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 import provenance.data.InfluenceMarker
 import provenance.rdd.{IntStreamingOutlierInfluenceTracker, MaxInfluenceTracker, StreamingOutlierInfluenceTracker}
 import sparkwrapper.SparkContextWithDP
+import symbolicprimitives.Utils
 
 /**
   * Created by Michael on 4/14/16.
@@ -35,8 +36,8 @@ object StudentInfoInfluence {
     val records = scdp.textFileProv(logFile)
     
     val grade_age_pair = records.map(line => {
-      val list = line.split(" ")
-      (list(3).toInt, list(4).toInt)
+      val list = line.split(",")
+      (list(3), list(4).toInt)
     })
     
     /** val average_age_by_grade = grade_age_pair.groupByKey
@@ -58,15 +59,10 @@ object StudentInfoInfluence {
       enableUDFAwareProv = None,
       influenceTrackerCtr = Some(()=> IntStreamingOutlierInfluenceTracker()))
     .mapValues({case (sum, count) => sum.toDouble/count})
-    //val out = average_age_by_grade.collect()
-    //out.foreach(println)
-    val out = average_age_by_grade.collectWithProvenance()
-    println("((Grade, Age), Provenance)")
-    out.foreach(println)
-    
-    // REMOVED: print out the result for debugging purpose
-    
-    // REMOVED: getLineage and tracing
+  
+    Utils.debugAndTracePrints(average_age_by_grade, (row: (String, Double)) => row._2 > 30,
+                              grade_age_pair.values.filter(_ > 30).rdd,
+                              records.rdd)
     
     println("Job's DONE!")
     ctx.stop()

@@ -46,35 +46,17 @@ object AirportTransitInfluence {
     // Removed: old influence version
     //val out = fil.reduceByKey((a: Int, b: Int) => a + b, InfluenceMarker.MaxFn[Int])
     val out = fil.reduceByKey((a: Int, b: Int) => a + b,
-                              //() => MaxInfluenceTracker[Int])
+                              () => MaxInfluenceTracker[Int]
                               //() => TopNInfluenceTracker[Int](5))
                               //() => IntStreamingOutlierInfluenceTracker()
-                              () => AbsoluteTopNIntInfluenceTracker(1)
+                              //() => AbsoluteTopNIntInfluenceTracker(1)
                               )
     
-    val (outResults, collectTime) = Utils.measureTimeMillis(out.collectWithProvenance())
-    //outResults.foreach(println)
     
-    val debugSet = outResults.filter(_._1._2 < 0) // testFn
-    val totalCount = input.rdd.count()
-    val bugCount = map.values.filter(_ < 0).rdd.count() // testFn on the diffs from input data
     
-    val combinedProvenance = debugSet.map(_._2).reduce(_.merge(_))
-    val (traceResults, traceTime) =
-      Utils.measureTimeMillis(Utils.retrieveProvenance(combinedProvenance).collect())
-    val traceCount = traceResults.length
-    println("DEBUG")
-    debugSet.foreach(println)
-    println("------------------")
-    println("TRACE")
-    traceResults.foreach(println)
-    println("-------------")
-    println(s"Collect time: $collectTime")
-    println(s"Total count: $totalCount")
-    println(s"Number of faults: $bugCount")
-    println(s"Trace time: $traceTime")
-    println(s"Trace count: $traceCount") // visual inspection needed to confirm counts
-    
+    Utils.debugAndTracePrints(out, (row: (Any, Int)) => row._2 < 0,
+                              map.values.filter(_ < 0).rdd,
+                              input.rdd)
   }
   
   def getDiff(arr: String, dep: String): Int = {
