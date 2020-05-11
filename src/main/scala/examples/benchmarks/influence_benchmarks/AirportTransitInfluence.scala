@@ -32,10 +32,10 @@ object AirportTransitInfluence {
     
     val map = input.map { s =>
       val tokens = s.split(",")
-      val arrival_hr = tokens(2).split(":")(0)
+      val dept_hr = tokens(3).split(":")(0)
       val diff = getDiff(tokens(2), tokens(3))
       val airport = tokens(4)
-      ((airport, arrival_hr), diff)
+      ((airport, dept_hr), diff)
     }
     val fil = map.filter { v =>
       v._2 < 45
@@ -55,9 +55,9 @@ object AirportTransitInfluence {
   def getDiff(arr: String, dep: String): Int = {
     val arr_min = arr.split(":")(0).toInt * 60 + arr.split(":")(1).toInt
     val dep_min = dep.split(":")(0).toInt * 60 + dep.split(":")(1).toInt
-    // if(dep_min - arr_min < 0){
-    //  return 24*60 + dep_min - arr_min
-    // }
+     if(dep_min - arr_min < 0){
+     return 24*60 + dep_min - arr_min
+     }
     return dep_min - arr_min
   }
   

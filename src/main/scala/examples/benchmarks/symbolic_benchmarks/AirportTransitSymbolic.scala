@@ -33,10 +33,10 @@ object AirportTransitSymbolic {
     
     val map = input.map { s =>
       val tokens = s.split(",")
-      val arrival_hr = tokens(2).split(":")(0)
+      val dept_hr = tokens(3).split(":")(0)
       val diff = getDiff(tokens(2), tokens(3))
       val airport = tokens(4)
-      ((airport, arrival_hr), diff)
+      ((airport, dept_hr), diff)
     }
     val fil = map.filter { v =>
       v._2 < 45
