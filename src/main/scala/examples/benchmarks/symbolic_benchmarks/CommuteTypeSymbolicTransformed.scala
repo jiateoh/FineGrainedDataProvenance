@@ -44,6 +44,7 @@ object CommuteTypeSymbolicTransformed {
     val startTime = System.currentTimeMillis();
     val _sc = new SparkContext(conf)
     val sc = new SparkContextWithDP(_sc)
+    // TODO: FIX THIS TO REFLECT INFLUENCE PROGRAM WHICH DOES NOT USE JOIN
     val tripLines = sc.textFileSymbolic("datasets/trips") //sc.parallelize(Array(data1(i)))
     val locationLines = sc.textFileSymbolic("datasets/zipcode") //sc.parallelize(Array(data2(i)))
     Utils.setUDFAwareDefaultValue(true)

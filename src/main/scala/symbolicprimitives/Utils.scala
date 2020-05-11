@@ -377,8 +377,9 @@ object Utils {
   def debugAndTracePrints[OutSchema](out: ProvenanceRDD[OutSchema],
                                      testFn: OutSchema => Boolean,
                                      trueFaults: RDD[_],
-                                     inputs: RDD[_]
-                                     ): Unit = {
+                                     inputs: RDD[_],
+                                     printOutput: Boolean = true
+                                     ): Array[String] = {
     val (outResults, collectTime) = Utils.measureTimeMillis(out.collectWithProvenance())
     val debugSet = outResults.filter(tuple => testFn(tuple._1))
     val totalCount = inputs.count()
@@ -390,6 +391,8 @@ object Utils {
     val (traceResults, traceTime) =
       Utils.measureTimeMillis(Utils.retrieveProvenance(combinedProvenance).collect())
     val traceCount = traceResults.length
+    if(printOutput)
+      outResults.foreach(println)
     println("DEBUG (capped at 100 printed)")
     debugSet.take(100).foreach(println)
     println("------------------")
@@ -401,6 +404,7 @@ object Utils {
     println(s"Number of faults: $bugCount")
     println(s"Trace time: $traceTime")
     println(s"Trace count: $traceCount") // visual inspection needed to confirm counts
+    traceResults
   }
 }
 
