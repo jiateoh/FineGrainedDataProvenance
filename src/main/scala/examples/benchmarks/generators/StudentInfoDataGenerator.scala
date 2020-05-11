@@ -14,8 +14,9 @@ object StudentInfoDataGenerator {
   var dataper  = 2500000
   var fault_rate = 0.000001
   val random = new Random(42)
-  def faultInjector()  = if(random.nextInt(dataper*partitions) < dataper*partitions* fault_rate) true else false
-
+  def shouldInjectFault(grade: String): Boolean = {
+    grade == "Junior" && random.nextDouble() <= fault_rate
+  }
   val genderList =  Array("male", "female")
   val collegeYear = Array("Freshman", "Sophomore", "Junior", "Senior")
   val majorList = Array("English", "Mathematics", "ComputerScience", "ElectricalEngineering", "Business", "Economics", "Biology",
@@ -42,13 +43,14 @@ object StudentInfoDataGenerator {
     sc.parallelize(Seq[Int]() , partitions).mapPartitions { _ =>
       (1 to dataper).map { _ =>
 
-        val insert_fault = faultInjector()
+
         val studentId = random.nextInt(99999999)
         val major = majorList(random.nextInt(majorList.length))
+        val insert_fault = shouldInjectFault(major)
         val gender = genderList(random.nextInt(genderList.length))
         val cy = random.nextInt(collegeYear.length)
-        val year = if(insert_fault) collegeYear(2) else collegeYear(cy)
-        val age = if (insert_fault) studentId else random.nextInt(6) + 15+ cy*2
+        val year =  collegeYear(cy)
+        val age = if (insert_fault) studentId else random.nextInt(6) + 15+ cy*2 //Each year has a consistent average age (17,19,21,23)
         val str = s"$studentId,$major,$gender,$year,$age"
         str
       }.toIterator
