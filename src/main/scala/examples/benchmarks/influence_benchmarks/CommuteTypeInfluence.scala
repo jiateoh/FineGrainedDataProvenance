@@ -88,6 +88,7 @@ object CommuteTypeInfluence {
         val trace = Utils.retrieveProvenance(outCollect.filter(_._1._1 == "car").head._2,
                                              tripLines)
         println("Traced: " + trace.count())
+        // trace.take(100).foreach(println)
     }
     catch {
       case e: Exception =>
