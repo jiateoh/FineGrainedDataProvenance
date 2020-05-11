@@ -32,8 +32,8 @@ object StudentInfoProvenance {
     val records = scdp.textFileProv(logFile)
     
     val grade_age_pair = records.map(line => {
-      val list = line.split(" ")
-      (list(4).toInt, list(3).toInt)
+      val list = line.split(",")
+      (list(3).toInt, list(4).toInt)
     })
     
     /** val average_age_by_grade = grade_age_pair.groupByKey
