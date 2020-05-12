@@ -1,5 +1,8 @@
 package examples.benchmarks.generators
 
+import java.io.File
+
+import org.apache.commons.io.FileUtils
 import org.apache.spark.{SparkConf, SparkContext}
 
 import scala.util.Random
@@ -13,7 +16,7 @@ object WeatherDataGenerator {
   var partitions = 10
   var dataper  = 100
   var fault_rate = 0.000001
-
+  val random = new Random(42)
   def main(args:Array[String]) =
   {
     val sparkConf = new SparkConf()
@@ -28,10 +31,11 @@ object WeatherDataGenerator {
       partitions =args(1).toInt
       dataper = args(2).toInt
     }
+    FileUtils.deleteQuietly(new File(logFile))
     val sc = new SparkContext(sparkConf)
     sc.parallelize(Seq[Int]() , partitions).mapPartitions { _ =>
       (1 to dataper).flatMap{_ =>
-        var zipcode = (Random.nextInt(9)+1).toString + Random.nextInt(10).toString + Random.nextInt(10).toString + Random.nextInt(10).toString + Random.nextInt(10).toString
+        var zipcode = (random.nextInt(9)+1).toString + random.nextInt(10).toString + random.nextInt(10).toString + random.nextInt(10).toString + random.nextInt(10).toString
         var list = List[String]()
         for(day <- 1 to 30){
           for(m <- 1 to 12){
@@ -54,27 +58,27 @@ object WeatherDataGenerator {
 
 
   def faultInjector(): Boolean ={
-    if(Random.nextInt(dataper *30*12*116* partitions) < dataper *30*12*116* partitions*fault_rate)
+    if(random.nextInt(dataper *30*12*116* partitions) < dataper *30*12*116* partitions*fault_rate)
      true else false
   }
   def getLowSnow(): String = {
     if(faultInjector()){
       return  "90in"
     }
-    if(Random.nextInt(2) == 0){
-      return Random.nextInt(160) + "mm"
+    if(random.nextInt(2) == 0){
+      return random.nextInt(160) + "mm"
     }else{
-      return (Random.nextFloat()/2) + "ft"
+      return (random.nextFloat()/2) + "ft"
     }
   }
   def getHighSnow(): String ={
     if(faultInjector()){
       return  "90in"
     }
-    if(Random.nextInt(2) == 0){
-      return Random.nextInt(4000) + "mm"
+    if(random.nextInt(2) == 0){
+      return random.nextInt(4000) + "mm"
     }else{
-      return (Random.nextFloat()*13) + "ft"
+      return (random.nextFloat()*13) + "ft"
     }
   }
 }
