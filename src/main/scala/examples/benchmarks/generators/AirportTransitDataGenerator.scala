@@ -67,6 +67,7 @@ object AirportTransitDataGenerator {
         val transit:Float = (Random.nextInt(4)+1).toFloat/2f
         val dep  = addTime(arrival, transit)
         if(faultInjector()){
+          println("Injecting")
           s"""$date,$passid,$passid:0,$dep,$airportcode"""
         }
         else
