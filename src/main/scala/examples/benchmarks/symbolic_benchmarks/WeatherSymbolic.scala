@@ -1,9 +1,11 @@
 package examples.benchmarks.symbolic_benchmarks
 
 import examples.benchmarks.AggregationFunctions
+import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
+import provenance.data.Provenance
 import sparkwrapper.SparkContextWithDP
-import symbolicprimitives.{MathSym, SymFloat, SymString, Utils}
+import symbolicprimitives.{MathSym, SymDouble, SymFloat, SymString, Utils}
 import symbolicprimitives.SymImplicits._
 
 /**
@@ -47,17 +49,48 @@ object WeatherSymbolic {
       //gets year
       val year = date.substring(date.lastIndexOf('/'))
       // gets month / date
-      val monthdate = date.substring(0, date.lastIndexOf('/') - 1)
+      val monthdate = date.substring(0, date.lastIndexOf('/'))
       List[(SymString, SymFloat)](
         (monthdate, snow),
         (year, snow)
       ).iterator
     }
     
+    //split.rdd.asInstanceOf[RDD[((SymString, SymFloat), Provenance)]].filter(_._2.count > 2)
+    //     .take(100).foreach(println)
+    //split.takeWithProvenance(10).foreach(println)
+    //println("TADA!")
+    //System.exit(1)
+    
     val deltaSnow = AggregationFunctions.minMaxDeltaByKey(split)
 
-    val out = deltaSnow.collectWithProvenance()
-    out.foreach(println)
+    // arbitrary test function
+    def testFn(row: (SymString, SymFloat)): Boolean =
+      row._2 > 6000f
+      //row._1.value == "30/1"
+    
+    val traceResults = Utils.debugAndTracePrints(deltaSnow, testFn,
+                              input.filter(s => {
+                                //s.contains("90in")
+                                val arr = s.split(",")
+                                arr(2).trim().equals("90in")
+                              }).rdd,
+                              input.rdd)
+    println("Correct Trace count: " + traceResults.count(s => {
+      val arr = s.split(",")
+      arr(2).trim().equals("90in")
+    }))
+    println("------- ALL TRACE RESULTS ----------")
+    traceResults.foreach(println)
+    
+    
+         
+//    val (outCollect, collectTime) = Utils.measureTimeMillis(deltaSnow.collectWithProvenance())
+//    //outCollect.foreach(println)
+//    outCollect.map(row => (row._1._1.value, row._1._2.value, row._2)).take(100).foreach(println)
+//    println(s"TOTAL: ${outCollect.length}")
+//    println(s"Collect time $collectTime")
+    
   }
 
 

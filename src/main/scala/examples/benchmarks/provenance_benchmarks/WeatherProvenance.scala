@@ -39,7 +39,7 @@ object WeatherProvenance {
       //gets year
       val year = date.substring(date.lastIndexOf('/'))
       // gets month / date
-      val monthdate = date.substring(0, date.lastIndexOf('/') - 1)
+      val monthdate = date.substring(0, date.lastIndexOf('/'))
       List[(String, Float)](
         (monthdate, snow),
         (year, snow)
