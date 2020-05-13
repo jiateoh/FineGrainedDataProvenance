@@ -1,5 +1,6 @@
 package provenance.rdd
 
+import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
 import symbolicprimitives.SymBase
 
@@ -49,6 +50,8 @@ trait ProvenanceRDD[T] extends Serializable {
 //
   
   def setName(name: String): this.type
+  
+  def rdd: RDD[_]
   
 }
 

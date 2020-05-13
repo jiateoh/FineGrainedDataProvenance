@@ -16,13 +16,10 @@ object WeatherDataGenerator {
   var partitions = 10
   var dataper  = 100
   var fault_rate = 0.000001
-
-
+  val random = new Random(42)
   def main(args:Array[String]) =
   {
     val sparkConf = new SparkConf()
-
-    val random = new Random(42)
     if(args.length < 2) {
       sparkConf.setMaster("local[6]")
       sparkConf.setAppName("TermVector_LineageDD")//.set("spark.executor.memory", "2g")
@@ -34,7 +31,6 @@ object WeatherDataGenerator {
       dataper = args(2).toInt
     }
     FileUtils.deleteQuietly(new File(logFile))
-
     val sc = new SparkContext(sparkConf)
     sc.parallelize(Seq[Int]() , partitions).mapPartitions { _ =>
       (1 to dataper).flatMap{_ =>
@@ -55,36 +51,32 @@ object WeatherDataGenerator {
           }
         }
         list}.iterator}.saveAsTextFile(logFile)
-    def faultInjector(): Boolean ={
-      if(random.nextInt(dataper *30*12*116* partitions) < dataper *30*12*116* partitions*fault_rate)
-        true else false
-    }
-    def getLowSnow(): String = {
-      if(faultInjector()){
-        println("Injecting")
-        return  "90in"
-      }
-      if(random.nextInt(2) == 0){
-        return random.nextInt(160) + "mm"
-      }else{
-        return (random.nextFloat()/2) + "ft"
-      }
-    }
-    def getHighSnow(): String ={
-      if(faultInjector()){
-        println("Injecting")
-        return  "90in"
-      }
-      if(random.nextInt(2) == 0){
-        return random.nextInt(4000) + "mm"
-      }else{
-        return (random.nextFloat()*13) + "ft"
-      }
-    }
-    
   }
 
 
-
+  def faultInjector(): Boolean ={
+    if(random.nextInt(dataper *30*12*116* partitions) < dataper *30*12*116* partitions*fault_rate)
+     true else false
+  }
+  def getLowSnow(): String = {
+    if(faultInjector()){
+      return  "90in"
+    }
+    if(random.nextInt(2) == 0){
+      return random.nextInt(160) + "mm"
+    }else{
+      return (random.nextFloat()/2) + "ft"
+    }
+  }
+  def getHighSnow(): String ={
+    if(faultInjector()){
+      return  "90in"
+    }
+    if(random.nextInt(2) == 0){
+      return random.nextInt(4000) + "mm"
+    }else{
+      return (random.nextFloat()*13) + "ft"
+    }
+  }
 }
 //2,088,000

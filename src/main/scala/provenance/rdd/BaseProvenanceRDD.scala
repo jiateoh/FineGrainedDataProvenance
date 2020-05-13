@@ -6,37 +6,37 @@ import symbolicprimitives.SymBase
 
 import scala.reflect.ClassTag
 
-abstract class BaseProvenanceRDD[T : ClassTag](val baseRDD: RDD[_]) extends ProvenanceRDD[T] {
-
+abstract class BaseProvenanceRDD[T : ClassTag](override val rdd: RDD[_]) extends ProvenanceRDD[T] {
+  
   /** Specialized flatMap to detect if a ProvenanceGrouping is used. */
   // def flatMap[U: ClassTag](f: T => ProvenanceGrouping[U]): FlatProvenanceDefaultRDD[U]
 
-  final def count(): Long = baseRDD.count()
+  final def count(): Long = rdd.count()
 //
 //  final def distinct(): ProvenanceRDD[T] = this.distinct(baseRDD.getNumPartitions)
 
   final def persist(newLevel: StorageLevel): this.type = {
-    baseRDD.persist(newLevel)
+    rdd.persist(newLevel)
     this
   }
 
   final def persist(): this.type = {
-    baseRDD.persist()
+    rdd.persist()
     this
   }
 
   final def unpersist(blocking: Boolean): this.type = {
-    baseRDD.unpersist(blocking)
+    rdd.unpersist(blocking)
     this
   }
 
   final def cache(): this.type = {
-    baseRDD.cache()
+    rdd.cache()
     this
   }
 
   final def setName(name: String): this.type = {
-    baseRDD.setName(name)
+    rdd.setName(name)
     this
   }
 }

@@ -373,6 +373,39 @@ object Utils {
 
     CallSite(shortForm, longForm)
   }
+  
+  def debugAndTracePrints[OutSchema](out: ProvenanceRDD[OutSchema],
+                                     testFn: OutSchema => Boolean,
+                                     trueFaults: RDD[_],
+                                     inputs: RDD[_],
+                                     printOutput: Boolean = true
+                                     ): Array[String] = {
+    val (outResults, collectTime) = Utils.measureTimeMillis(out.collectWithProvenance())
+    val debugSet = outResults.filter(tuple => testFn(tuple._1))
+    val totalCount = inputs.count()
+  
+    val bugCount = trueFaults.count() // 'true' testFn on inputs
+    // in practice, precise number would be 27+
+  
+    val combinedProvenance = debugSet.map(_._2).reduce(_.merge(_))
+    val (traceResults, traceTime) =
+      Utils.measureTimeMillis(Utils.retrieveProvenance(combinedProvenance).collect())
+    val traceCount = traceResults.length
+    if(printOutput)
+      outResults.foreach(println)
+    println("DEBUG (capped at 100 printed)")
+    debugSet.take(100).foreach(println)
+    println("------------------")
+    println("TRACE (capped at 100 printed)")
+    traceResults.take(100).foreach(println)
+    println("-------------")
+    println(s"Collect time: $collectTime")
+    println(s"Total count: $totalCount")
+    println(s"Number of faults: $bugCount")
+    println(s"Trace time: $traceTime")
+    println(s"Trace count: $traceCount") // visual inspection needed to confirm counts
+    traceResults
+  }
 }
 
 /** CallSite represents a place in user code. It can have a short and a long form. */

@@ -123,6 +123,10 @@ case class BottomNInfluenceTracker[T](override val maxSize: Int)(implicit orderi
 case class TopNInfluenceTracker[T](override val maxSize: Int)(implicit ordering: Ordering[T])
   extends OrderedNInfluenceTracker[T](maxSize)(ordering.reverse)
 
+case class AbsoluteTopNIntInfluenceTracker(maxSize: Int)(implicit ordering: Ordering[Int])
+  extends ValueConverterInfluenceTracker[Int, Int](Math.abs _, TopNInfluenceTracker[Int](maxSize))
+
+
 case class UnionInfluenceTracker[T](trackers: InfluenceTracker[T]*) extends InfluenceTracker[T] {
   override def init(value: ProvenanceRow[T]): UnionInfluenceTracker[T] ={
     trackers.foreach(_.init(value))

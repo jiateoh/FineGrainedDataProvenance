@@ -1,9 +1,11 @@
 package examples.benchmarks.influence_benchmarks
 
+import examples.benchmarks.AggregationFunctions
 import org.apache.spark.{SparkConf, SparkContext}
 import provenance.data.InfluenceMarker
-import provenance.rdd.MaxInfluenceTracker
+import provenance.rdd.{IntStreamingOutlierInfluenceTracker, MaxInfluenceTracker, StreamingOutlierInfluenceTracker}
 import sparkwrapper.SparkContextWithDP
+import symbolicprimitives.Utils
 
 /**
   * Created by Michael on 4/14/16.
@@ -34,8 +36,8 @@ object StudentInfoInfluence {
     val records = scdp.textFileProv(logFile)
     
     val grade_age_pair = records.map(line => {
-      val list = line.split(" ")
-      (list(3).toInt, list(4).toInt)
+      val list = line.split(",")
+      (list(3), list(4).toInt)
     })
     
     /** val average_age_by_grade = grade_age_pair.groupByKey
@@ -49,22 +51,18 @@ object StudentInfoInfluence {
                                                }
                                                (pair._1, moving_average)
                                              })**/
+    // Because this program currently defines 4 partitions, we don't have an explicit
+    // AggregationFunction UDF for it.
     val average_age_by_grade = grade_age_pair.aggregateByKey((0L, 0), 4)(
       {case ((sum, count), next) => (sum + next, count+1)},
       {case ((sum1, count1), (sum2, count2)) => (sum1+sum2,count1+count2)},
       enableUDFAwareProv = None,
-      //inflFunction = Some(InfluenceMarker.MaxWithTiesFn[Int]))
-      influenceTrackerCtr = Some(()=> MaxInfluenceTracker[Int]))
+      influenceTrackerCtr = Some(()=> IntStreamingOutlierInfluenceTracker()))
     .mapValues({case (sum, count) => sum.toDouble/count})
-    //val out = average_age_by_grade.collect()
-    //out.foreach(println)
-    val out = average_age_by_grade.collectWithProvenance()
-    println("((Grade, Age), Provenance)")
-    out.foreach(println)
-    
-    // REMOVED: print out the result for debugging purpose
-    
-    // REMOVED: getLineage and tracing
+  
+    Utils.debugAndTracePrints(average_age_by_grade, (row: (String, Double)) => row._2 > 30,
+                              grade_age_pair.values.filter(_ > 30).rdd,
+                              records.rdd)
     
     println("Job's DONE!")
     ctx.stop()

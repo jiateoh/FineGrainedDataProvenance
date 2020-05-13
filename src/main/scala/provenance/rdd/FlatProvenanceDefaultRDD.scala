@@ -6,7 +6,7 @@ import symbolicprimitives.Utils
 
 import scala.reflect.ClassTag
 
-class FlatProvenanceDefaultRDD[T: ClassTag](val rdd: RDD[ProvenanceRow[T]]) extends
+class FlatProvenanceDefaultRDD[T: ClassTag](override val rdd: RDD[ProvenanceRow[T]]) extends
   BaseProvenanceRDD[T](rdd) {
   
   private def rddWithoutProvenance: RDD[T] = rdd.map(_._1)

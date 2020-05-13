@@ -45,32 +45,19 @@ object CommuteTypeInfluence {
     val startTime = System.currentTimeMillis();
     val _sc = new SparkContext(conf)
     val sc = new SparkContextWithDP(_sc)
-    val tripLines = sc.textFileProv("datasets/trips") //sc.parallelize(Array(data1(i)))
-    val locationLines = sc.textFileProv("datasets/zipcode") //sc.parallelize(Array(data2(i)))
-    // For-loop removed
-    // for(i <- 0 to data1.length-1){
+    val tripLines = sc.textFileProv("datasets/commute/trips") //sc.parallelize(Array(data1(i)))
     try{
       val trips = tripLines
                     .map { s =>
                       val cols = s.split(",")
                       (cols(1), Integer.parseInt(cols(3)) / Integer.parseInt(cols(4)))
                     }
-      val locations = locationLines
-                        .map { s =>
-                          val cols = s.split(",")
-                          (cols(0), cols(1))
-                        }
-                        // jteoh: adjusted because datagen treats these as zip codes rather than
-                        // neighborhood names. Also, column filter is wrong.
-                        //.filter(s => s._2.equals("Palms"))
-                        //.filter(s => s._1.equals("90034"))
-      val joined = trips.join(locations)
-      val types = joined
+      val types = trips
         .map { s =>
-          val speed = s._2._1
-          if (s._2._1 > 40) {
+          val speed = s._2
+          if (speed > 40) {
             ("car", speed)
-          } else if (s._2._1 > 15) {
+          } else if (speed > 15) {
             ("public", speed)
           } else {
             ("onfoot", speed)
@@ -81,14 +68,22 @@ object CommuteTypeInfluence {
         val out = AggregationFunctions.averageByKey(types,
                                                     enableUDFAwareProv = Some(false),
                                                     influenceTrackerCtr = Some(() =>
-                                                                                 TopNInfluenceTracker(1000)))
-                                                                               //IntStreamingOutlierInfluenceTracker(zscoreThreshold = 5)))
-        val outCollect = out.collectWithProvenance()
-        outCollect.foreach(println)
-        val trace = Utils.retrieveProvenance(outCollect.filter(_._1._1 == "car").head._2,
-                                             tripLines)
-        println("Traced: " + trace.count())
-        // trace.take(100).foreach(println)
+                                                                               //TopNInfluenceTracker(1000)))
+                                                                               IntStreamingOutlierInfluenceTracker(zscoreThreshold = 10)))
+      val trace = Utils.debugAndTracePrints(out, (row: (String, Double)) => row._1 == "car",
+                                trips.filter(_._2 > 500).rdd,
+                                tripLines.rdd)
+      val truePos = trace.count(s => {
+      val cols = s.split(",")
+      Integer.parseInt(cols(3)) / Integer.parseInt(cols(4)) > 500
+      })
+      println(s"True positives: $truePos")
+//      val outCollect = out.collectWithProvenance()
+//        outCollect.foreach(println)
+//        val trace = Utils.retrieveProvenance(outCollect.filter(_._1._1 == "car").head._2,
+//                                             tripLines)
+//        println("Traced: " + trace.count())
+//        // trace.take(100).foreach(println)
     }
     catch {
       case e: Exception =>

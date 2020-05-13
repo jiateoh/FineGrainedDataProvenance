@@ -2,7 +2,7 @@ package examples.benchmarks.influence_benchmarks
 
 import org.apache.spark.{SparkConf, SparkContext}
 import provenance.data.InfluenceMarker
-import provenance.rdd.{MaxInfluenceTracker, TopNInfluenceTracker}
+import provenance.rdd.{AbsoluteTopNIntInfluenceTracker, IntStreamingOutlierInfluenceTracker, MaxInfluenceTracker, StreamingOutlierInfluenceTracker, TopNInfluenceTracker}
 import sparkwrapper.SparkContextWithDP
 import symbolicprimitives.{SymInt, SymString, Utils}
 
@@ -46,18 +46,25 @@ object AirportTransitInfluence {
     // Removed: old influence version
     //val out = fil.reduceByKey((a: Int, b: Int) => a + b, InfluenceMarker.MaxFn[Int])
     val out = fil.reduceByKey((a: Int, b: Int) => a + b,
-                              //() => MaxInfluenceTracker[Int])
-                              () => TopNInfluenceTracker[Int](5))
+                              () => MaxInfluenceTracker[Int]
+                              //() => TopNInfluenceTracker[Int](5))
+                              //() => IntStreamingOutlierInfluenceTracker()
+                              //() => AbsoluteTopNIntInfluenceTracker(1)
+                              )
     
-    out.collectWithProvenance().foreach(println)
+    
+    
+    Utils.debugAndTracePrints(out, (row: (Any, Int)) => row._2 < 0,
+                              map.values.filter(_ < 0).rdd,
+                              input.rdd)
   }
   
   def getDiff(arr: String, dep: String): Int = {
     val arr_min = arr.split(":")(0).toInt * 60 + arr.split(":")(1).toInt
     val dep_min = dep.split(":")(0).toInt * 60 + dep.split(":")(1).toInt
-     if(dep_min - arr_min < 0){
-     return 24*60 + dep_min - arr_min
-     }
+    if(dep_min - arr_min < 0){
+      return 24*60 + dep_min - arr_min
+    }
     return dep_min - arr_min
   }
   
