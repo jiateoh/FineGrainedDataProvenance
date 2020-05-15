@@ -48,9 +48,18 @@ object StudentGradesInfluenceV3 {
       { case ((sum, sum2, count), next) => (sum + next, sum2 + next * next, count + 1) },
       { case ((sum11, sum12, count11), (sum21, sum22, count22)) => (sum11 + sum21, sum22 + sum12, count11 + count22)},
       enableUDFAwareProv = Some(false),
-      influenceTrackerCtr = Some(() => StreamingOutlierInfluenceTracker(zscoreThreshold = 0.96))
+      influenceTrackerCtr = Some(() =>
+                                   StreamingOutlierInfluenceTracker(zscoreThreshold = 3))//0.96))
+                                   //TopNInfluenceTracker(100))
     ).mapValues({ case (sum, sum2, count) => (sum2.toDouble - (sum.toDouble * sum.toDouble / count)) / count })
 
+//    Utils.runTraceAndPrintStats(out,
+//                                (row: (String, Double)) => row._1 == "CS",
+//                                lines,
+//                                (line: String) => {
+//                                  line.
+//                                }
+//                                )
     val elapsed = Utils.measureTimeMillis({
       val outCollect = out.collectWithProvenance()
       println("Department, Variance")
