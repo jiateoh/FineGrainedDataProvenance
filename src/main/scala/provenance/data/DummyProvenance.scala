@@ -20,6 +20,10 @@ class DummyProvenance private extends Provenance {
   override def toString(): String = {
     s"${this.getClass.getSimpleName}: [n/a]"
   }
+  
+  override def containsAll(other: Provenance): Boolean = {
+    other.isInstanceOf[DummyProvenance]
+  }
 }
 
 

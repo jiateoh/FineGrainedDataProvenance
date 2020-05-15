@@ -8,6 +8,8 @@ trait Provenance extends Serializable {
     *  method should not be assumed to return the same instance as its caller. */
   def merge(other: Provenance): Provenance
   
+  def containsAll(other: Provenance): Boolean
+  
   /** Returns number of provenance IDs. */
   def count: Int
 

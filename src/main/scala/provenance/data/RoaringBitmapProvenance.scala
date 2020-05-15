@@ -56,6 +56,14 @@ class RoaringBitmapProvenance(var bitmap: RoaringBitmap) extends DataStructurePr
     buf += ']'
     s"${this.getClass.getSimpleName}: ${buf.toString()}"
   }
+  
+  override def containsAll(other: Provenance): Boolean = {
+    other match {
+      case rbp: RoaringBitmapProvenance =>
+        bitmap.contains(rbp.bitmap)
+      case other => throw new NotImplementedError(s"Unsupported RoaringBitmap containsAll check: $other")
+    }
+  }
 }
 
 object RoaringBitmapProvenance extends ProvenanceFactory {
