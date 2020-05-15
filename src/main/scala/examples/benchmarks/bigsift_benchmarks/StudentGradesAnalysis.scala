@@ -26,7 +26,7 @@ object StudentGradesAnalysis {
     val ctx = new SparkContext(sparkConf) //set up lineage context and start capture lineage
     val bs = new BigSift(ctx, logFile)
     bs.runWithBigSift[(String, Double)](app, Some(failure))
-    bsift.getDebuggingStatistics()
+    bs.getDebuggingStatistics()
   }
 
   def app(input: RDD[String], lineage: Lineage[String]): RDD[(String, Double)] = {
