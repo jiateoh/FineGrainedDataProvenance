@@ -30,6 +30,7 @@ object WeatherAnalysis {
     val ctx = new SparkContext(sparkConf) //set up lineage context and start capture lineage
     val bs = new BigSift(ctx , logFile)
     bs.runWithBigSift[(String, Float)](app, Some(failure))
+    bsift.getDebuggingStatistics()
   }
 
   def app(input: RDD[String], lineage: Lineage[String]): RDD[(String, Float)] = {
@@ -75,7 +76,7 @@ object WeatherAnalysis {
       //gets year
       val year = date.substring(date.lastIndexOf("/"))
       // gets month / date
-      val monthdate = date.substring(0, date.lastIndexOf("/") - 1)
+      val monthdate = date.substring(0, date.lastIndexOf("/"))
       List[(String, Float)](
         (monthdate, snow),
         (year, snow)
