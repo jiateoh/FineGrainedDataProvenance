@@ -12,7 +12,7 @@ class DummyProvenance private extends Provenance {
   }
   override def cloneProvenance(): Provenance = this
 
-  override def merge(other: Provenance): Provenance = other
+  override def merge(other: Provenance): Provenance = other.cloneProvenance()
 
   override def count: Int = 0
 

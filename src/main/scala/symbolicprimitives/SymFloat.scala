@@ -7,59 +7,57 @@ import provenance.data.Provenance
   */
 
 case class SymFloat(override val value: Float, p:Provenance) extends SymAny(value, p){
-  
-  
   /**
     * Overloading operators from here onwards
     */
 
   def +(x: Float): SymFloat = {
     val d = value + x
-    SymFloat(d, prov)
+    SymFloat(d, getProvenance())
   }
 
   def -(x: Float): SymFloat = {
     val d = value - x
-    SymFloat(d, prov)
+    SymFloat(d, getProvenance())
   }
 
   def *(x: Float): SymFloat = {
     val d = value * x
-    SymFloat(d, prov)
+    SymFloat(d, getProvenance())
 
   }
 
   def /(x: Float): SymFloat = {
     val d = value / x
-    SymFloat(d, prov)
+    SymFloat(d, getProvenance())
   }
 
   def +(x: SymFloat): SymFloat = {
-    SymFloat(value + x.value, mergeProvenance(x.getProvenance()))
+    SymFloat(value + x.value, newProvenance(x.getProvenance()))
   }
 
   def +(x: SymDouble): SymDouble = {
-    SymDouble(value + x.value, mergeProvenance(x.getProvenance()))
+    SymDouble(value + x.value, newProvenance(x.getProvenance()))
   }
 
   def -(x: SymFloat): SymFloat = {
-    SymFloat(value - x.value, mergeProvenance(x.getProvenance()))
+    SymFloat(value - x.value, newProvenance(x.getProvenance()))
   }
 
   def *(x: SymFloat): SymFloat = {
-    SymFloat(value * x.value, mergeProvenance(x.getProvenance()))
+    SymFloat(value * x.value, newProvenance(x.getProvenance()))
 
   }
 
   def /(x: SymFloat): SymFloat = {
-    SymFloat(value / x.value, mergeProvenance(x.getProvenance()))
+    SymFloat(value / x.value, newProvenance(x.getProvenance()))
   }
 
   /**
     * Operators not Supported Symbolically yet
     **/
   override def toString: String =
-    value.toString + s""" (Most Influential Input Offset: ${prov})"""
+    value.toString + s""" (Most Influential Input Offset: ${getProvenance()})"""
 //
 //  def toByte: Byte = value.toByte
 //

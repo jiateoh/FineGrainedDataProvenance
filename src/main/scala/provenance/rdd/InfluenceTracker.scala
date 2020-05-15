@@ -22,17 +22,19 @@ case class AllInfluenceTracker[T]() extends InfluenceTracker[T] {
   private var prov: Provenance = _
   
   override def init(value: ProvenanceRow[T]): AllInfluenceTracker[T] = {
-    prov = value._2
+    // clone because we plan to merge later.
+    // Assuming we've implemented efficient (lazy) cloning, this shouldn't be an issue.
+    prov = value._2.cloneProvenance()
     this
   }
   
   override def mergeValue(value: ProvenanceRow[T]): AllInfluenceTracker[T] = {
-    prov.merge(value._2)
+    prov = prov.merge(value._2)
     this
   }
   
   override def mergeTracker(other: InfluenceTracker[T]): AllInfluenceTracker[T] = {
-    prov.merge(other.computeProvenance())
+    prov = prov.merge(other.computeProvenance())
     this
   }
   

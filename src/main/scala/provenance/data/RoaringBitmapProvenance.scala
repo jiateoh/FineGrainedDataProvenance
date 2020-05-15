@@ -5,9 +5,9 @@ import java.io.{IOException, ObjectInputStream, ObjectOutputStream}
 import org.roaringbitmap.RoaringBitmap
 
 class RoaringBitmapProvenance(var bitmap: RoaringBitmap) extends DataStructureProvenance(bitmap) {
-  override def cloneProvenance(): Provenance = new RoaringBitmapProvenance(bitmap.clone())
+  override def _cloneProvenance(): RoaringBitmapProvenance = new RoaringBitmapProvenance(bitmap.clone())
   
-  override def merge(other: Provenance): this.type = {
+  override def _merge(other: Provenance): this.type = {
     other match {
       case rbp: RoaringBitmapProvenance =>
         bitmap.or(rbp.bitmap)

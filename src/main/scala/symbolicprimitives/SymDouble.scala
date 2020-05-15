@@ -12,46 +12,46 @@ case class SymDouble(i: Double, p: Provenance) extends SymAny(i, p) {
     */
 
   def +(x: Double): SymDouble = {
-    SymDouble(value + x, prov)
+    SymDouble(value + x, getProvenance())
   }
 
   def -(x: Double): SymDouble = {
-    SymDouble(value - x, prov)
+    SymDouble(value - x, getProvenance())
   }
 
   def *(x: Double): SymDouble = {
-    SymDouble(value * x, prov)
+    SymDouble(value * x, getProvenance())
 
   }
 
   def *(x: Float): SymDouble = {
-    SymDouble(value * x, prov)
+    SymDouble(value * x, getProvenance())
   }
 
   def /(x: Double): SymDouble = {
-    SymDouble(value / x, prov)
+    SymDouble(value / x, getProvenance())
   }
 
   def +(x: SymDouble): SymDouble = {
-    SymDouble(value + x.value, mergeProvenance(x.getProvenance()))
+    SymDouble(value + x.value, newProvenance(x.getProvenance()))
   }
 
   def -(x: SymDouble): SymDouble = {
-    SymDouble(value - x.value, mergeProvenance(x.getProvenance()))
+    SymDouble(value - x.value, newProvenance(x.getProvenance()))
   }
 
   def *(x: SymDouble): SymDouble = {
-    SymDouble(value * x.value, mergeProvenance(x.getProvenance()))
+    SymDouble(value * x.value, newProvenance(x.getProvenance()))
   }
 
   def /(x: SymDouble): SymDouble = {
-    SymDouble(value / x.value, mergeProvenance(x.getProvenance()))
+    SymDouble(value / x.value, newProvenance(x.getProvenance()))
   }
 
   // TODO: Following are control flow provenance that, in my opinion, should be configurable. [Gulzar]
 
   def <(x: SymDouble): Boolean = {
-    prov.merge(x.getProvenance())
+    mergeProvenance(x.getProvenance())
     return value < x.value
   }
 
@@ -60,11 +60,11 @@ case class SymDouble(i: Double, p: Provenance) extends SymAny(i, p) {
   }
 
   def >=(x: SymDouble): Boolean = {
-    prov.merge(x.getProvenance())
+    mergeProvenance(x.getProvenance())
     value >= x.value
   }
   def <=(x: SymDouble): Boolean = {
-    prov.merge(x.getProvenance())
+    mergeProvenance(x.getProvenance())
     value <= x.value
   }
 
@@ -76,7 +76,7 @@ case class SymDouble(i: Double, p: Provenance) extends SymAny(i, p) {
   }
 
   override def toString: String =
-    value.toString + s""" (Most Influential Input Offset: ${prov})"""
+    value.toString + s""" (Most Influential Input Offset: ${getProvenance()})"""
   /**
     * Not Supported Symbolically yet
     **/

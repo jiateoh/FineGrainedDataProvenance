@@ -12,7 +12,7 @@ case class SymString(override val value: String, p: Provenance) extends SymAny(v
     */
 
    def length: SymInt = {
-     SymInt(value.length, prov)
+     SymInt(value.length, getProvenance())
   }
 
    def split(separator: Char): Array[SymString] = {
@@ -20,14 +20,14 @@ case class SymString(override val value: String, p: Provenance) extends SymAny(v
       .split(separator)
       .map(s =>
          SymString(
-          s, prov))
+          s, getProvenance()))
   }
   def split(regex: String): Array[SymString] = {
     value
       .split(regex)
       .map(s =>
          SymString(
-          s, prov))
+          s, getProvenance()))
   }
    def split(separator: Array[Char]): Array[SymString] = {
 
@@ -35,35 +35,35 @@ case class SymString(override val value: String, p: Provenance) extends SymAny(v
       .split(separator)
       .map(s =>
          SymString(
-          s, prov
+          s, getProvenance()
         ))
   }
 
   def substring(arg0: SymInt): SymString = {
-      SymString(value.substring(arg0.value), mergeProvenance(arg0.prov))
+      SymString(value.substring(arg0.value), newProvenance(arg0.getProvenance()))
   }
 
   def substring(arg0: Int, arg1: SymInt): SymString = {
-    SymString(value.substring(arg0, arg1.value), mergeProvenance(arg1.prov))
+    SymString(value.substring(arg0, arg1.value), newProvenance(arg1.getProvenance()))
   }
   def substring(arg0: SymInt, arg1: SymInt): SymString = {
-    SymString(value.substring(arg0.value, arg1.value), mergeProvenance(arg1.prov))
+    SymString(value.substring(arg0.value, arg1.value), newProvenance(arg0.getProvenance(), arg1.getProvenance()))
   }
 
   def lastIndexOf(elem: Char): SymInt = {
-    SymInt(value.lastIndexOf(elem),prov)
+    SymInt(value.lastIndexOf(elem), getProvenance())
   }
 
 
    def toInt: SymInt ={
-    SymInt( value.toInt, prov)
+    SymInt( value.toInt, getProvenance())
   }
 
    def toFloat: SymFloat =
-     SymFloat(value.toFloat , prov)
+     SymFloat(value.toFloat , getProvenance())
 
    def toDouble: SymDouble ={
-    SymDouble(value.toDouble , prov)
+    SymDouble(value.toDouble , getProvenance())
   }
 
   def equals(obj: SymString): Boolean = value.equals(obj.value)

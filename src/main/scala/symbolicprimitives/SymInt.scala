@@ -16,49 +16,49 @@ case class SymInt(override val value: Int, p : Provenance) extends SymAny(value,
     */
   def +(x: Int): SymInt = {
     val d = value + x
-    SymInt(d, prov)
+    SymInt(d, getProvenance())
   }
 
   def -(x: Int): SymInt = {
     val d = value - x
-    SymInt(d, prov)
+    SymInt(d, getProvenance())
   }
 
   def *(x: Int): SymInt = {
     val d = value * x
-    SymInt(d, prov)
+    SymInt(d, getProvenance())
   }
 
   def *(x: Float): SymFloat = {
     val d = value * x
-    SymFloat(d, prov)
+    SymFloat(d, getProvenance())
   }
 
 
   def /(x: Int): SymDouble= {
     val d = value / x
-    SymDouble(d, prov )
+    SymDouble(d, getProvenance() )
   }
 
   def /(x: Long): SymDouble= {
     val d = value / x
-    SymDouble(d, prov)
+    SymDouble(d, getProvenance())
   }
 
   def +(x: SymInt): SymInt = {
-    SymInt(value + x.value, mergeProvenance(x.getProvenance()))
+    SymInt(value + x.value, newProvenance(x.getProvenance()))
   }
 
   def -(x: SymInt): SymInt = {
-    SymInt(value - x.value, mergeProvenance(x.getProvenance()))
+    SymInt(value - x.value, newProvenance(x.getProvenance()))
   }
 
   def *(x: SymInt): SymInt = {
-    SymInt(value * x.value, mergeProvenance(x.getProvenance()))
+    SymInt(value * x.value, newProvenance(x.getProvenance()))
   }
 
   def /(x: SymInt): SymInt = {
-    SymInt(value / x.value, mergeProvenance(x.getProvenance()))
+    SymInt(value / x.value, newProvenance(x.getProvenance()))
   }
 
   def %(x: Int): SymInt = {
@@ -67,7 +67,7 @@ case class SymInt(override val value: Int, p : Provenance) extends SymAny(value,
   
   // Implementing on a need-to-use basis
   def toInt: SymInt = this
-  def toDouble: SymDouble = SymDouble(value.toDouble, prov)
+  def toDouble: SymDouble = SymDouble(value.toDouble, getProvenance())
   
   /**
     * Operators not supported yet

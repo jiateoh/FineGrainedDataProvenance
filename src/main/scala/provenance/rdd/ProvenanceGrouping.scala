@@ -18,8 +18,9 @@ class ProvenanceGrouping[T](data: Iterable[ProvenanceRow[T]]) extends Traversabl
   def combinedProvenance: Provenance = {
     // TODO: check for missing data
     val base = data.head._2.cloneProvenance()
-    data.foreach(x => base.merge(x._2))
-    base
+    data.map(_._2).foldLeft(base)(_.merge(_))
+    //data.foreach(x => base.merge(x._2))
+    //base
   }
 
   override def size(): Int = data.size

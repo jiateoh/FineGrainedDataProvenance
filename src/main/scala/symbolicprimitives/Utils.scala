@@ -301,7 +301,7 @@ object Utils {
   def addProvDependency(list: List[Any]): Provenance = {
     val symBases = list.collect({case s: SymBase => s})
     if(symBases.isEmpty) DummyProvenance.create() else
-        symBases.foldLeft(Provenance.create())((prov,symbase) => prov.merge(symbase.prov))
+        symBases.foldLeft(Provenance.create())((prov,symbase) => prov.merge(symbase.getProvenance()))
   }
   
   // A regular expression to match classes of the internal Spark API's

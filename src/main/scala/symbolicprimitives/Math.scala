@@ -295,7 +295,7 @@ object MathSym {
     *  @group explog
     */
   def pow(x: SymDouble, y: SymDouble): SymDouble =
-    SymDouble(Math.pow(x.value, y.value), x.mergeProvenance(y.getProvenance()))
+    SymDouble(Math.pow(x.value, y.value), x.newProvenance(y.getProvenance()))
 
   /** Returns Euler's number `e` raised to the power of a `Double` value.
     *

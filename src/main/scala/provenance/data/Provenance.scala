@@ -4,7 +4,8 @@ trait Provenance extends Serializable {
   
   def cloneProvenance(): Provenance
   
-  /** Merges two provenance instances (in place), returning the current instance after merging. */
+  /** Merges two provenance instances, returning a (potentially) new instance after merging. This
+    *  method should not be assumed to return the same instance as its caller. */
   def merge(other: Provenance): Provenance
   
   /** Returns number of provenance IDs. */
@@ -16,23 +17,24 @@ trait Provenance extends Serializable {
 }
 
 object Provenance {
-  var useLazyClone: Boolean = _
-  def setLazyClone(lazyClone: Boolean): Unit = {
-    println("-" * 40)
-    println(s"Lazy clone configuration: $lazyClone")
-    println("-" * 40)
-    this.useLazyClone = lazyClone
-  }
-  setLazyClone(true)
+  // Unused
+  //  var useLazyClone: Boolean = _
+  //  def setLazyClone(lazyClone: Boolean): Unit = {
+  //    println("-" * 40)
+  //    println(s"Lazy clone configuration: $lazyClone")
+  //    println("-" * 40)
+  //    this.useLazyClone = lazyClone
+  //  }
+  //  setLazyClone(true)
 
-  var useDedupSerializer: Boolean = _
-  def setDedupSerializer(dedup: Boolean): Unit = {
-    println("-" * 40)
-    println(s"Deduplication serializer configuration: $dedup")
-    println("-" * 40)
-    this.useDedupSerializer = dedup
-  }
-  setDedupSerializer(true)
+  //  var useDedupSerializer: Boolean = _
+  //  def setDedupSerializer(dedup: Boolean): Unit = {
+  //    println("-" * 40)
+  //    println(s"Deduplication serializer configuration: $dedup")
+  //    println("-" * 40)
+  //    this.useDedupSerializer = dedup
+  //  }
+  //  setDedupSerializer(true)
   
   private var provenanceFactory: ProvenanceFactory = _
   setProvenanceFactory(RoaringBitmapProvenance)

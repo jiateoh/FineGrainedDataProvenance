@@ -10,9 +10,7 @@ abstract class BaseProvenanceRDD[T : ClassTag](override val rdd: RDD[_]) extends
   
   /** Specialized flatMap to detect if a ProvenanceGrouping is used. */
   // def flatMap[U: ClassTag](f: T => ProvenanceGrouping[U]): FlatProvenanceDefaultRDD[U]
-
-  final def count(): Long = rdd.count()
-//
+  
 //  final def distinct(): ProvenanceRDD[T] = this.distinct(baseRDD.getNumPartitions)
 
   final def persist(newLevel: StorageLevel): this.type = {

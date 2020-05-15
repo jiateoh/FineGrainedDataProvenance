@@ -237,7 +237,7 @@ class PairProvenanceDefaultRDD[K, V](override val rdd: RDD[(K, ProvenanceRow[V])
         resultSerializer
         )
       // The output will be a symobj, so rely on that to identify provenance
-      val extractedSymBaseProv = combinerResult.mapValues(v => (v, v.asInstanceOf[SymBase].prov))
+      val extractedSymBaseProv = combinerResult.mapValues(v => (v, v.asInstanceOf[SymBase].getProvenance()))
       new PairProvenanceDefaultRDD[K,C](extractedSymBaseProv)
     } else {
       // default is an AllInfluenceTracker, i.e. don't filter anything.

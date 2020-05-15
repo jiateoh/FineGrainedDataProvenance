@@ -53,6 +53,8 @@ trait ProvenanceRDD[T] extends Serializable {
   
   def rdd: RDD[_]
   
+  def count(): Long = rdd.count()
+  
 }
 
 object ProvenanceRDD {
