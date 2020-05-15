@@ -1,12 +1,10 @@
 package examples.benchmarks.symbolic_benchmarks
 
 import examples.benchmarks.AggregationFunctions
-import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
-import provenance.data.Provenance
 import sparkwrapper.SparkContextWithDP
-import symbolicprimitives.{MathSym, SymDouble, SymFloat, SymString, Utils}
 import symbolicprimitives.SymImplicits._
+import symbolicprimitives.{SymFloat, SymString, Utils}
 
 /**
   * Created by ali on 2/25/17.
@@ -36,6 +34,7 @@ object WeatherSymbolic {
     
     //set up spark context
     val ctx = new SparkContext(sparkConf) //set up lineage context and start capture lineage
+    ctx.setLogLevel("ERROR")
     val scdp = new SparkContextWithDP(ctx)
     val input = scdp.textFileSymbolic(logFile)
 
@@ -64,33 +63,21 @@ object WeatherSymbolic {
     
     val deltaSnow = AggregationFunctions.minMaxDeltaByKey(split)
 
-    // arbitrary test function
+    // output test function
     def testFn(row: (SymString, SymFloat)): Boolean =
       row._2 > 6000f
-      //row._1.value == "30/1"
     
-    val traceResults = Utils.debugAndTracePrints(deltaSnow, testFn,
-                              input.filter(s => {
-                                //s.contains("90in")
-                                val arr = s.split(",")
-                                arr(2).trim().equals("90in")
-                              }).rdd,
-                              input.rdd)
-    println("Correct Trace count: " + traceResults.count(s => {
+    def faultFn(s: String): Boolean = {
       val arr = s.split(",")
       arr(2).trim().equals("90in")
-    }))
-    println("------- ALL TRACE RESULTS ----------")
-    traceResults.foreach(println)
-    
-    
-         
-//    val (outCollect, collectTime) = Utils.measureTimeMillis(deltaSnow.collectWithProvenance())
-//    //outCollect.foreach(println)
-//    outCollect.map(row => (row._1._1.value, row._1._2.value, row._2)).take(100).foreach(println)
-//    println(s"TOTAL: ${outCollect.length}")
-//    println(s"Collect time $collectTime")
-    
+    }
+    Utils.runTraceAndPrintStats(deltaSnow,
+                                  (row: (SymString, SymFloat)) => row._2 > 6000f,
+                                  input.map(_.value),
+                                  (s: String) => {
+                                    val arr = s.split(",")
+                                    arr(2).trim().equals("90in")
+                                  })
   }
 
 

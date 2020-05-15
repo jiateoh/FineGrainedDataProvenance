@@ -2,7 +2,7 @@ package examples.benchmarks.influence_benchmarks
 
 import org.apache.spark.{SparkConf, SparkContext}
 import provenance.data.InfluenceMarker
-import provenance.rdd.{AbsoluteTopNIntInfluenceTracker, IntStreamingOutlierInfluenceTracker, MaxInfluenceTracker, StreamingOutlierInfluenceTracker, TopNInfluenceTracker}
+import provenance.rdd.{AbsoluteTopNIntInfluenceTracker, BottomNInfluenceTracker, IntStreamingOutlierInfluenceTracker, MaxInfluenceTracker, MinInfluenceTracker, StreamingOutlierInfluenceTracker, TopNInfluenceTracker}
 import sparkwrapper.SparkContextWithDP
 import symbolicprimitives.{SymInt, SymString, Utils}
 
@@ -46,17 +46,21 @@ object AirportTransitInfluence {
     // Removed: old influence version
     //val out = fil.reduceByKey((a: Int, b: Int) => a + b, InfluenceMarker.MaxFn[Int])
     val out = fil.reduceByKey((a: Int, b: Int) => a + b,
-                              () => MaxInfluenceTracker[Int]
-                              //() => TopNInfluenceTracker[Int](5))
-                              //() => IntStreamingOutlierInfluenceTracker()
+                              //() => MinInfluenceTracker[Int]
+                              //() => BottomNInfluenceTracker[Int](5))
+                              () => IntStreamingOutlierInfluenceTracker()
                               //() => AbsoluteTopNIntInfluenceTracker(1)
                               )
     
     
-    
-    Utils.debugAndTracePrints(out, (row: (Any, Int)) => row._2 < 0,
-                              map.values.filter(_ < 0).rdd,
-                              input.rdd)
+    Utils.runTraceAndPrintStats(out,
+                                  (row: ((String, String), Int)) => row._2 < 0,
+                                  input,
+                                  (s: String) => {
+                                    val tokens = s.split(",")
+                                    val diff = getDiff(tokens(2), tokens(3))
+                                    diff < 0
+                                  })
   }
   
   def getDiff(arr: String, dep: String): Int = {

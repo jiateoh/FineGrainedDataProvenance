@@ -60,11 +60,13 @@ object StudentInfoInfluence {
       influenceTrackerCtr = Some(()=> IntStreamingOutlierInfluenceTracker()))
     .mapValues({case (sum, count) => sum.toDouble/count})
   
-    Utils.debugAndTracePrints(average_age_by_grade, (row: (String, Double)) => row._2 > 30,
-                              grade_age_pair.values.filter(_ > 30).rdd,
-                              records.rdd)
-    
-    println("Job's DONE!")
+    Utils.runTraceAndPrintStats(average_age_by_grade,
+                                  (row: (String, Double)) => row._2 > 30,
+                                  records,
+                                  (line: String) => {
+                                    val list = line.split(",")
+                                    list(4).toInt > 30
+                                  })
     ctx.stop()
     
   }

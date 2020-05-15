@@ -64,26 +64,19 @@ object CommuteTypeInfluence {
           }
         }
         
-        //val out = AggregationFunctions.sumByKey(types)// types.reduceByKey(_ + _)
-        val out = AggregationFunctions.averageByKey(types,
-                                                    enableUDFAwareProv = Some(false),
-                                                    influenceTrackerCtr = Some(() =>
-                                                                               //TopNInfluenceTracker(1000)))
-                                                                               IntStreamingOutlierInfluenceTracker(zscoreThreshold = 10)))
-      val trace = Utils.debugAndTracePrints(out, (row: (String, Double)) => row._1 == "car",
-                                trips.filter(_._2 > 500).rdd,
-                                tripLines.rdd)
-      val truePos = trace.count(s => {
-      val cols = s.split(",")
-      Integer.parseInt(cols(3)) / Integer.parseInt(cols(4)) > 500
-      })
-      println(s"True positives: $truePos")
-//      val outCollect = out.collectWithProvenance()
-//        outCollect.foreach(println)
-//        val trace = Utils.retrieveProvenance(outCollect.filter(_._1._1 == "car").head._2,
-//                                             tripLines)
-//        println("Traced: " + trace.count())
-//        // trace.take(100).foreach(println)
+      //val out = AggregationFunctions.sumByKey(types)// types.reduceByKey(_ + _)
+      val out = AggregationFunctions.averageByKey(types,
+                                                  enableUDFAwareProv = Some(false),
+                                                  influenceTrackerCtr = Some(() =>
+                                                                             //TopNInfluenceTracker(1000)))
+                                                                             IntStreamingOutlierInfluenceTracker(zscoreThreshold = 10)))
+      Utils.runTraceAndPrintStats(out,
+                                    (row: (String, Double)) => row._1 == "car",
+                                    tripLines,
+                                    (s: String) => {
+                                      val cols = s.split(",")
+                                      Integer.parseInt(cols(3)) / Integer.parseInt(cols(4)) > 500
+                                    })
     }
     catch {
       case e: Exception =>
@@ -91,7 +84,7 @@ object CommuteTypeInfluence {
     }
     //}
     
-    println("Time: " + (System.currentTimeMillis() - startTime))
+    //println("Time: " + (System.currentTimeMillis() - startTime))
     //    val trips = sc
     //      .textFile(
     //        "/Users/malig/workspace/up_jpf/benchmarks/src/datasets/trips/*")

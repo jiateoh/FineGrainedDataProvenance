@@ -374,36 +374,75 @@ object Utils {
     CallSite(shortForm, longForm)
   }
   
-  def debugAndTracePrints[OutSchema](out: ProvenanceRDD[OutSchema],
-                                     testFn: OutSchema => Boolean,
-                                     trueFaults: RDD[_],
-                                     inputs: RDD[_],
-                                     printOutput: Boolean = true
-                                     ): Array[String] = {
+  def runTraceAndPrintStats[OutSchema](out: ProvenanceRDD[OutSchema],
+                                       outputTestFn: OutSchema => Boolean,
+                                       inputs: ProvenanceRDD[String],
+                                       inputFaultFn: String => Boolean,
+                                       outputPrintLimit: Option[Int] = Some(10),
+                                       debugPrintLimit: Option[Int] = Some(10),
+                                       tracePrintLimit: Option[Int] = Some(10),
+                                       diffsPrintLimit: Option[Int] = Some(10),
+                                       lineSep: String = "-" * 50
+                                    ): Array[String] = {
+    
+    
     val (outResults, collectTime) = Utils.measureTimeMillis(out.collectWithProvenance())
-    val debugSet = outResults.filter(tuple => testFn(tuple._1))
-    val totalCount = inputs.count()
+    val debugTargets = outResults.filter(tuple => outputTestFn(tuple._1))
+    val inputCount = inputs.count()
   
-    val bugCount = trueFaults.count() // 'true' testFn on inputs
-    // in practice, precise number would be 27+
-  
-    val combinedProvenance = debugSet.map(_._2).reduce(_.merge(_))
+    val debugTargetCount = debugTargets.length
+    val combinedProvenance = debugTargets.map(_._2).foldLeft(DummyProvenance.create())({
+      case (prov, other) => prov.merge(other)
+    })
+    
     val (traceResults, traceTime) =
       Utils.measureTimeMillis(Utils.retrieveProvenance(combinedProvenance).collect())
     val traceCount = traceResults.length
-    if(printOutput)
-      outResults.foreach(println)
-    println("DEBUG (capped at 100 printed)")
-    debugSet.take(100).foreach(println)
-    println("------------------")
-    println("TRACE (capped at 100 printed)")
-    traceResults.take(100).foreach(println)
-    println("-------------")
+    val traceCorrectCount = traceResults.count(inputFaultFn)
+    
+    val trueFaultsRDD: ProvenanceRDD[String] = inputs.filter(inputFaultFn)
+    val (trueFaultCount, missingFaults, falseTraces) = if(diffsPrintLimit.isDefined) {
+      val trueFaults = trueFaultsRDD.collect()
+      val missingFaults = trueFaults.diff(traceResults)
+      val falseTraces = traceResults.diff(trueFaults)
+      (trueFaults.length.toLong, missingFaults, falseTraces)
+    } else (trueFaultsRDD.count(), Array(), Array())
+  
+    
+    val missingFaultCount = trueFaultCount - traceCorrectCount
+    val extraTraceCount = traceCount - traceCorrectCount
+    
+    def printWithLimit(arr: Array[_], limitOpt: Option[Int], header: String): Unit = {
+      limitOpt.foreach(limit => {
+        if(limit == Int.MaxValue || arr.length <= limit) println(s"$header (all results)")
+        else println(s"$header (capped at $limit printed)")
+        
+        arr.take(limit).foreach(println)
+        println(lineSep)
+      })
+    }
+    
+    
+    println(lineSep)
+    printWithLimit(outResults, outputPrintLimit, "OUTPUTS")
+    printWithLimit(debugTargets, debugPrintLimit, "DEBUG TARGETS")
+    printWithLimit(traceResults, tracePrintLimit, "TRACE RESULTS")
+    printWithLimit(missingFaults, diffsPrintLimit, "UNTRACED FAULTS")
+    printWithLimit(falseTraces, diffsPrintLimit, "FALSELY TRACED FAULTS")
+    
     println(s"Collect time: $collectTime")
-    println(s"Total count: $totalCount")
-    println(s"Number of faults: $bugCount")
+    println(s"Input count: $inputCount")
+    println(s"Debug target count: $debugTargetCount")
+    println(s"Number of true faults: $trueFaultCount")
     println(s"Trace time: $traceTime")
-    println(s"Trace count: $traceCount") // visual inspection needed to confirm counts
+    println(s"Trace count: $traceCount")
+    println(s"Trace count (correct/yield): $traceCorrectCount")
+    println(s"Missing Faults: $missingFaultCount")
+    println(s"Extra traces: $extraTraceCount")
+    println()
+    println(s"Precision: ${traceCorrectCount.toDouble / traceCount}")
+    println(s"Recall: ${traceCorrectCount.toDouble / trueFaultCount}")
+    println(s"Yield: $traceCorrectCount")
     traceResults
   }
 }
