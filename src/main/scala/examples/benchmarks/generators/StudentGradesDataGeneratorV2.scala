@@ -13,20 +13,22 @@ import scala.util.Random
   */
 object StudentGradesDataGeneratorV2 {
   
+  var logFile = ""
+  var partitions = 10
+  var dataper  = 5000000 // 500000 before
+  val depts = Seq("EE", "CS", "MATH", "Physics ", "STATS")
+  val courseNums = Seq(0,100).flatMap(x => (1 to 99).map(_ + x))
+  val faultTargetCourses = Seq("CS9", "CS11")//, "CS14", "CS17") // (note: there are 5 dept x
+  // 80 and 50M rows, so 2 courses should equal 250K records.
+  // course numbers each for a total of 200, so this represents a small fraction of total records)
+  def shouldInjectFault(course: String): Boolean = faultTargetCourses.contains(course)// && Random.nextDouble() <= faultRate
+  
+  
   def main(args:Array[String]) =
   {
     val sparkConf = new SparkConf()
     val random = new Random(42) // fixed seed for reproducability
     
-    var logFile = ""
-    var partitions = 10
-    var dataper  = 5000000 // 500000 before
-    val depts = Seq("EE", "CS", "MATH", "Physics ", "STATS")
-    val courseNums = Seq(0,100).flatMap(x => (1 to 99).map(_ + x))
-    val faultTargetCourses = Seq("CS9", "CS11")//, "CS14", "CS17") // (note: there are 5 dept x
-  // 80 and 50M rows, so 2 courses should equal 250K records.
-    // course numbers each for a total of 200, so this represents a small fraction of total records)
-    def shouldInjectFault(course: String): Boolean = faultTargetCourses.contains(course)// && Random.nextDouble() <= faultRate
     
     
     if(args.length < 2) {
