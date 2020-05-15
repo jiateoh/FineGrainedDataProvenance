@@ -431,6 +431,7 @@ def runWithBigSift[T](f : (RDD[String] , Lineage[String]) => RDD[T] , test : Opt
   def getDebuggingStatistics(): Unit ={
     println(
       s"""
+         | Original Job Time            : ${bus.initialJobTime.getOrElse(-1)} microseconds
          | Total BigSift Debugging Time : ${bus.totalLocalizationTime.getOrElse(-1)} microseconds
          | Total Input Rows             : ${bus.initialSize.getOrElse(-1)} records
          | Total Titan Trace Size       : ${titan_size} records
