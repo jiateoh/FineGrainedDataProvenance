@@ -1,5 +1,6 @@
 package examples.benchmarks.influence_benchmarks
 
+import examples.benchmarks.generators.StudentGradesDataGeneratorV2
 import org.apache.spark.{SparkConf, SparkContext}
 import provenance.data.RoaringBitmapProvenance
 import provenance.rdd.{BottomNInfluenceTracker, FilterInfluenceTracker, StreamingOutlierInfluenceTracker, TopNInfluenceTracker, UnionInfluenceTracker}
@@ -103,7 +104,7 @@ object StudentGradesInfluenceV2 {
 //                       println(s"Filter Influence tracker with range $lower to $upper")
 //                       () => FilterInfluenceTracker(value => (value <= lower) || (value >= upper))
 //                     }
-            () => StreamingOutlierInfluenceTracker(zscoreThreshold = 4.0)
+            () => StreamingOutlierInfluenceTracker(zscoreThreshold = 3.0)
        
            //() => FilterInfluenceTracker(value => value <= 2.3 || value >= 3.3)
            //() => TopNInfluenceTracker(5)
@@ -119,22 +120,31 @@ object StudentGradesInfluenceV2 {
     })
     
     val out = deptGpaMeanVar
-    val elapsed = Utils.measureTimeMillis({
-      val outCollect = out.collectWithProvenance()
-      println("Department, (Mean, Variance)")
-      outCollect.foreach(println)
-  
-      // Debugging
-      val csRecord = outCollect.filter(_._1._1 == "CS").head // get the CS row
-      val csProvenance = csRecord._2
-      val trace = Utils.retrieveProvenance(csProvenance)
-      println("----- TRACE RESULTS ------")
-      println("Count = " + trace.count())
-      //trace.take(100).foreach(println)
-    })
-    println(s"Elapsed time: $elapsed ms")
+    
+    Utils.runTraceAndPrintStats(out,
+                                (row: (String, (Double, Double))) => row._1 == "CS",
+                                lines,
+                                (line: String) => {
+                                  val arr = line.split(",")
+                                  val courseId = arr(1)
+                                  StudentGradesDataGeneratorV2.faultTargetCourses.contains(courseId)
+                                })
+//    val elapsed = Utils.measureTimeMillis({
+//      val outCollect = out.collectWithProvenance()
+//      println("Department, (Mean, Variance)")
+//      outCollect.foreach(println)
+//
+//      // Debugging
+//      val csRecord = outCollect.filter(_._1._1 == "CS").head // get the CS row
+//      val csProvenance = csRecord._2
+//      val trace = Utils.retrieveProvenance(csProvenance)
+//      println("----- TRACE RESULTS ------")
+//      println("Count = " + trace.count())
+//      //trace.take(100).foreach(println)
+//    })
+//    println(s"Elapsed time: $elapsed ms")
   }
-  
+//
 //  override def execute(input1: RDD[String], input2: RDD[String]): RDD[String] = {
 //    input1.flatMap(l => l.split("\n")).flatMap{ line =>
 //      val arr = line.split(",")
