@@ -17,7 +17,8 @@ object CommuteTypeAnalysis {
     if (args.length < 2) {
       sparkConf.setMaster("local[6]")
       sparkConf.setAppName("Student Age Analysis").set("spark.executor.memory", "2g")
-      logFile = "datasets/commute/trips"
+      //logFile = "datasets/commute/trips"
+      logFile = "datasets/commute/trips/part-000[0-4]*" //halving for program stability
     } else {
       logFile = args(0)
     }

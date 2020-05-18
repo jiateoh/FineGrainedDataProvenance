@@ -45,7 +45,9 @@ object CommuteTypeInfluence {
     val startTime = System.currentTimeMillis();
     val _sc = new SparkContext(conf)
     val sc = new SparkContextWithDP(_sc)
-    val tripLines = sc.textFileProv("datasets/commute/trips") //sc.parallelize(Array(data1(i)))
+    //val tripLines = sc.textFileProv("datasets/commute/trips") //sc.parallelize(Array(data1(i)))
+    // halving dataset size for program stability in Titian/BigSift
+    val tripLines = sc.textFileProv("datasets/commute/trips/part-000[0-4]*")
     try{
       val trips = tripLines
                     .map { s =>
