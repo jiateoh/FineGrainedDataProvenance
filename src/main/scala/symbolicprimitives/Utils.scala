@@ -389,6 +389,7 @@ object Utils {
     val (outResults, collectTime) = Utils.measureTimeMillis(out.collectWithProvenance())
     val debugTargets = outResults.filter(tuple => outputTestFn(tuple._1))
     val inputCount = inputs.count()
+    val outputCount = outResults.length
   
     val debugTargetCount = debugTargets.length
     val combinedProvenance = debugTargets.map(_._2).foldLeft(DummyProvenance.create())({
@@ -432,6 +433,7 @@ object Utils {
     
     println(s"Collect time: $collectTime")
     println(s"Input count: $inputCount")
+    println(s"Output count: $outputCount")
     println(s"Debug target count: $debugTargetCount")
     println(s"Number of true faults: $trueFaultCount")
     println(s"Trace time: $traceTime")
