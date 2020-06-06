@@ -33,6 +33,13 @@ object StudentGradesInfluenceV2 {
       val (courseId, grade) = (arr(1), arr(2).toInt)
       (courseId, grade)
     })
+    //println("CS COURSE COUNT: " + courseGrades.filter(x => x._1.startsWith("CS")).count())
+    //System.exit(1)
+    //println("???: \n" + courseGrades.map(x => (x._1, 1)).reduceByKey(_+_).count())
+    //println("CS COURSE Breakdowns: \n" + courseGrades.map(x => (x._1, grade)).reduceByKey(_+_)
+                                                     //.collect()
+                                              //.mkString("\n"))
+    //System.exit(1)
     
     val courseGpas = courseGrades.mapValues(grade => {
       // https://pages.collegeboard.org/how-to-convert-gpa-4.0-scale
@@ -49,6 +56,7 @@ object StudentGradesInfluenceV2 {
       else 0.0
     })
     
+    
     // Using the written out version for motivation example
     //val courseGpaAvgs = AggregationFunctions.averageByKey(courseGpas)
     val courseGpaAvgs =
@@ -57,6 +65,9 @@ object StudentGradesInfluenceV2 {
       {case ((sum1, count1), (sum2, count2)) => (sum1+sum2,count1+count2)}
     ).mapValues({case (sum, count) => sum.toDouble/count})
     
+    //    println("CS9 and CS11: " + courseGpaAvgs.take(5).union(
+    //      courseGpaAvgs.filter(x => x._1 == "CS9" || x._1 == "CS11").collect()).mkString("\n"))
+    //    System.exit(1)
     val deptGpas = courseGpaAvgs.map({case (courseId, gpa) =>
       // split once, at the first digit we find
       val dept = courseId.split("\\d", 2)(0).trim()
