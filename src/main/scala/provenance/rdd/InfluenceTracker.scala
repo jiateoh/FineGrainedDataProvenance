@@ -168,7 +168,7 @@ case class FilterInfluenceTracker[T](filterFn: T => Boolean) extends InfluenceTr
   //private val values = ListBuffer[Provenance]()
   private val values = ArrayBuffer[Provenance]()
 
-  private def addIfFiltered(value: ProvenanceRow[T]): FilterInfluenceTracker[T] = {
+  private def addIfFiltered(value: ProvenanceRow[T]): this.type = {
     if(filterFn(value._1)) values += value._2
     this
   }
@@ -226,6 +226,10 @@ extends InfluenceTracker[V] {
 
 case class IntStreamingOutlierInfluenceTracker(zscoreThreshold: Double = 3.0, warmup: Int = 100)
   extends ValueConverterInfluenceTracker[Int, Double](_.toDouble,
+                                                      StreamingOutlierInfluenceTracker(zscoreThreshold, warmup))
+
+case class FloatStreamingOutlierInfluenceTracker(zscoreThreshold: Double = 3.0, warmup: Int = 100)
+  extends ValueConverterInfluenceTracker[Float, Double](_.toDouble,
                                                       StreamingOutlierInfluenceTracker(zscoreThreshold, warmup))
 
 /** Naive outlier detection that retains potential outliers based on a streaming mean and
