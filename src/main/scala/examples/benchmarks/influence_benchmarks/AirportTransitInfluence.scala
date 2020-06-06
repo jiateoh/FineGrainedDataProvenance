@@ -1,5 +1,6 @@
 package examples.benchmarks.influence_benchmarks
 
+import examples.benchmarks.AggregationFunctions
 import org.apache.spark.{SparkConf, SparkContext}
 import provenance.data.InfluenceMarker
 import provenance.rdd.{AbsoluteTopNIntInfluenceTracker, BottomNInfluenceTracker, IntStreamingOutlierInfluenceTracker, MaxInfluenceTracker, MinInfluenceTracker, StreamingOutlierInfluenceTracker, TopNInfluenceTracker}
@@ -41,18 +42,8 @@ object AirportTransitInfluence {
       v._2 < 45
     }
     
-    //val out = fil.reduceByKey(_ + _, InfluenceMarker.MaxFn[Int])
-    // Unfortunately, Scala won't compile if we use underscore notation here.
-    // Removed: old influence version
-    //val out = fil.reduceByKey((a: Int, b: Int) => a + b, InfluenceMarker.MaxFn[Int])
-    val out = fil.reduceByKey((a: Int, b: Int) => a + b,
-                              //() => MinInfluenceTracker[Int]
-                              //() => BottomNInfluenceTracker[Int](5))
-                              () => IntStreamingOutlierInfluenceTracker()
-                              //() => AbsoluteTopNIntInfluenceTracker(1)
-                              )
-    
-    
+    val out = AggregationFunctions.sumByKeyWithInfluence(fil)
+    // other considerations for influence functions: Min Infl, BottomN, AbsoluteTopN
     Utils.runTraceAndPrintStats(out,
                                   (row: ((String, String), Int)) => row._2 < 0,
                                   input,

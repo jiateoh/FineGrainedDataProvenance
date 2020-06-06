@@ -1,9 +1,10 @@
 package examples.benchmarks.influence_benchmarks
 
+import examples.benchmarks.AggregationFunctions
 import examples.benchmarks.generators.StudentGradesDataGeneratorV2
 import org.apache.spark.{SparkConf, SparkContext}
 import provenance.data.RoaringBitmapProvenance
-import provenance.rdd.{BottomNInfluenceTracker, FilterInfluenceTracker, StreamingOutlierInfluenceTracker, TopNInfluenceTracker, UnionInfluenceTracker}
+import provenance.rdd.{BottomNInfluenceTracker, FilterInfluenceTracker, PairProvenanceRDD, ProvenanceRDD, StreamingOutlierInfluenceTracker, TopNInfluenceTracker, UnionInfluenceTracker}
 import sparkwrapper.SparkContextWithDP
 import symbolicprimitives.Utils
 
@@ -73,63 +74,9 @@ object StudentGradesInfluenceV2 {
       val dept = courseId.split("\\d", 2)(0).trim()
       (dept, gpa)
     })
-    
-    // Based on https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
-    // and https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
-    // (based on provided python code)
-    // count is initialized as a double to avoid accidental int division
-    // variance returned is population variance
-    // TODO: Refactor into AggregationUDF and provide an influence-based implementation
-    val deptGpaStats = deptGpas.aggregateByKey((0.0, 0.0, 0.0))({
-      // https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
-      // this is essentially the scala implementation of the python example update
-      case (agg, newValue) =>
-        var (count, mean, m2) = agg
-        count += 1
-        val delta  = newValue - mean
-        mean += delta / count
-        val delta2 = newValue - mean
-        m2 += delta * delta2
-        (count, mean, m2)
-    }, {
-      case (aggA, aggB) =>
-        // https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
-        // parse values
-        val (countA, meanA, m2A) = aggA
-        val (countB, meanB, m2B) = aggB
-        
-        val count = countA + countB
-        val delta = meanB - meanA
-        val mean = meanA + delta * countB / count
-        val m2 = m2A + m2B + (delta * delta) * (countA * countB / count)
-        (count, mean, m2)
-    },
-     enableUDFAwareProv = Some(false),
-     influenceTrackerCtr = Some(
-//                     {
-//                       val mean = 2.7437360761067904
-//                       val variance = 0.039061295613521535
-//                       val stdDev = Math.sqrt(variance)
-//                       val lower = mean - 3 * stdDev // 2.1508181555463692
-//                       val upper = mean + 3 * stdDev // 3.3366539966672115
-//                       println(s"Filter Influence tracker with range $lower to $upper")
-//                       () => FilterInfluenceTracker(value => (value <= lower) || (value >= upper))
-//                     }
-            () => StreamingOutlierInfluenceTracker(zscoreThreshold = 3.0)
-       
-           //() => FilterInfluenceTracker(value => value <= 2.3 || value >= 3.3)
-           //() => TopNInfluenceTracker(5)
-           //() => UnionInfluenceTracker(TopNInfluenceTracker(5), BottomNInfluenceTracker(5))
-       
-       //AllInfluenceTracker[Double]
-       )
-     )
-
-   val deptGpaMeanVar = deptGpaStats.mapValues({case (count, mean, m2) =>
-    // population variance is simply m2 / count
-     (mean, m2 / count)
-    })
-    
+  
+    val deptGpaMeanVar = AggregationFunctions.averageAndVarianceByKeyWithInfluence(deptGpas)
+  
     val out = deptGpaMeanVar
     
     Utils.runTraceAndPrintStats(out,
@@ -174,6 +121,7 @@ object StudentGradesInfluenceV2 {
 //          .reduceByKey(_ + _)
 //          .filter(v => v._2 > 1).map(m => m._1 +","+ m._2)
 //  }
+
 }
 //
 //

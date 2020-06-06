@@ -67,11 +67,8 @@ object CommuteTypeInfluence {
         }
         
       //val out = AggregationFunctions.sumByKey(types)// types.reduceByKey(_ + _)
-      val out = AggregationFunctions.averageByKey(types,
-                                                  enableUDFAwareProv = Some(false),
-                                                  influenceTrackerCtr = Some(() =>
-                                                                             TopNInfluenceTracker(1000)))
-                                                                             //IntStreamingOutlierInfluenceTracker(zscoreThreshold = 10)))
+      // other functions to consider: intstreaming
+      val out = AggregationFunctions.averageByKeyWithInfluence(types, () => TopNInfluenceTracker(1000))
       Utils.runTraceAndPrintStats(out,
                                     (row: (String, Double)) => row._1 == "car",
                                     tripLines,
