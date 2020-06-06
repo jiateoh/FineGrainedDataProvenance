@@ -61,6 +61,7 @@ class RoaringBitmapProvenance(var bitmap: RoaringBitmap) extends DataStructurePr
     other match {
       case rbp: RoaringBitmapProvenance =>
         bitmap.contains(rbp.bitmap)
+      case dummy: DummyProvenance => true
       case other => throw new NotImplementedError(s"Unsupported RoaringBitmap containsAll check: $other")
     }
   }
