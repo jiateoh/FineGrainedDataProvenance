@@ -1,10 +1,7 @@
-package examples.benchmarks.influence_benchmarks
+package examples.benchmarks.baseline
 
 import examples.benchmarks.AggregationFunctions
 import org.apache.spark.{SparkConf, SparkContext}
-import provenance.data.InfluenceMarker
-import provenance.rdd.{IntStreamingOutlierInfluenceTracker, MaxInfluenceTracker, ProvenanceRDD, StreamingOutlierInfluenceTracker}
-import sparkwrapper.SparkContextWithDP
 import symbolicprimitives.Utils
 
 /**
@@ -13,7 +10,7 @@ import symbolicprimitives.Utils
   * https://github.com/maligulzar/BigSiftUI/blob/master/src/benchmarks/studentdataanalysis/StudentInfo.scala
   * Logging and other miscellaneous bigsift-specific functionality is removed.
   */
-object StudentInfoInfluence {
+object StudentInfoBaseline {
   
   def main(args: Array[String]): Unit = {
     val sparkConf = new SparkConf()
@@ -27,13 +24,9 @@ object StudentInfoInfluence {
       logFile = args(0)
     }
     //set up spark context
-    val ctx = new SparkContext(sparkConf)
+    val sc = new SparkContext(sparkConf)
     
-    //set up lineage context
-    val scdp = new SparkContextWithDP(ctx)
-    
-    
-    val records = scdp.textFileProv(logFile)
+    val records = sc.textFile(logFile)
     
     val grade_age_pair = records.map(line => {
       val list = line.split(",")
@@ -55,16 +48,13 @@ object StudentInfoInfluence {
     // AggregationFunction UDF for it.
     // TODO: previous impl used 4 partitions, but this is removed. If anything this should make
     //  for worse performance, but rerun perf numbers if needed.
-    val average_age_by_grade = AggregationFunctions.averageByKeyWithInfluence(grade_age_pair)
+    val average_age_by_grade = grade_age_pair.aggregateByKey((0.0, 0))(
+      {case ((sum, count), next) => (sum + next, count+1)},
+      {case ((sum1, count1), (sum2, count2)) => (sum1+sum2,count1+count2)}
+                                                          ).mapValues({case (sum, count) => sum.toDouble/count})
   
-    Utils.runTraceAndPrintStats(average_age_by_grade,
-                                  (row: (String, Double)) => row._2 > 30,
-                                  records,
-                                  (line: String) => {
-                                    val list = line.split(",")
-                                    list(4).toInt > 30
-                                  })
-    ctx.stop()
+    Utils.runBaseline(average_age_by_grade)
+    
     
   }
   

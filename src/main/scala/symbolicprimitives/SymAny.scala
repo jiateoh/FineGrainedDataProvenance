@@ -38,5 +38,4 @@ abstract class SymAny[T <: Any](val value: T, p: Provenance) extends SymBase(p) 
   //  def sym(v: String): SymString = SymString(v, p)
 }
 object SymAny {
-
 }

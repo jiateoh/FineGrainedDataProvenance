@@ -49,22 +49,31 @@ case class SymDouble(i: Double, p: Provenance) extends SymAny(i, p) {
   }
 
   // TODO: Following are control flow provenance that, in my opinion, should be configurable. [Gulzar]
-
+  // JT: agreed - for now, I've disabled since they don't return a new data type.
   def <(x: SymDouble): Boolean = {
-    mergeProvenance(x.getProvenance())
+    // mergeProvenance(x.getProvenance()) // see above note on configurable
     return value < x.value
   }
 
   def <(x: Double): Boolean = {
     return value < x
   }
+  
+  def >(x: SymDouble): Boolean = {
+    // mergeProvenance(x.getProvenance()) // see above note on configurable
+    return value > x.value
+  }
+  
+  def >(x: Double): Boolean = {
+    return value > x
+  }
 
   def >=(x: SymDouble): Boolean = {
-    mergeProvenance(x.getProvenance())
+    // mergeProvenance(x.getProvenance()) // see above note on configurable
     value >= x.value
   }
   def <=(x: SymDouble): Boolean = {
-    mergeProvenance(x.getProvenance())
+    // mergeProvenance(x.getProvenance()) // see above note on configurable
     value <= x.value
   }
 
@@ -288,4 +297,8 @@ case class SymDouble(i: Double, p: Provenance) extends SymAny(i, p) {
   //  def %(x: Float): Float = value % x
   //
   //  def %(x: Double): Double = value % x
+}
+
+object SymDouble {
+  implicit def ordering: Ordering[SymDouble] = Ordering.by(_.value)
 }

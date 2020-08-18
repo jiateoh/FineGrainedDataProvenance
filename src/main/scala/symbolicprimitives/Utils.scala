@@ -374,6 +374,19 @@ object Utils {
     CallSite(shortForm, longForm)
   }
   
+  def printWithLimit(arr: Array[_],
+                     limitOpt: Option[Int],
+                     header: String,
+                     lineSep: String = "-" * 50): Unit = {
+    limitOpt.foreach(limit => {
+      if(limit == Int.MaxValue || arr.length <= limit) println(s"$header (all results)")
+      else println(s"$header (capped at $limit printed)")
+      
+      arr.take(limit).foreach(println)
+      println(lineSep)
+    })
+  }
+  
   def runTraceAndPrintStats[OutSchema](out: ProvenanceRDD[OutSchema],
                                        outputTestFn: OutSchema => Boolean,
                                        inputs: ProvenanceRDD[String],
@@ -413,23 +426,12 @@ object Utils {
     val missingFaultCount = trueFaultCount - traceCorrectCount
     val extraTraceCount = traceCount - traceCorrectCount
     
-    def printWithLimit(arr: Array[_], limitOpt: Option[Int], header: String): Unit = {
-      limitOpt.foreach(limit => {
-        if(limit == Int.MaxValue || arr.length <= limit) println(s"$header (all results)")
-        else println(s"$header (capped at $limit printed)")
-        
-        arr.take(limit).foreach(println)
-        println(lineSep)
-      })
-    }
-    
-    
     println(lineSep)
-    printWithLimit(outResults, outputPrintLimit, "OUTPUTS")
-    printWithLimit(debugTargets, debugPrintLimit, "DEBUG TARGETS")
-    printWithLimit(traceResults, tracePrintLimit, "TRACE RESULTS")
-    printWithLimit(missingFaults, diffsPrintLimit, "UNTRACED FAULTS")
-    printWithLimit(falseTraces, diffsPrintLimit, "FALSELY TRACED FAULTS")
+    printWithLimit(outResults, outputPrintLimit, "OUTPUTS", lineSep)
+    printWithLimit(debugTargets, debugPrintLimit, "DEBUG TARGETS", lineSep)
+    printWithLimit(traceResults, tracePrintLimit, "TRACE RESULTS", lineSep)
+    printWithLimit(missingFaults, diffsPrintLimit, "UNTRACED FAULTS", lineSep)
+    printWithLimit(falseTraces, diffsPrintLimit, "FALSELY TRACED FAULTS", lineSep)
     
     println(s"Collect time: $collectTime")
     println(s"Input count: $inputCount")
@@ -447,7 +449,39 @@ object Utils {
     println(s"Yield: $traceCorrectCount")
     traceResults
   }
+  
+  def runBaseline[OutSchema](out: RDD[OutSchema],
+                             outputPrintLimit: Option[Int] = Some(10),
+                             lineSep: String = "-" * 50
+                                      ): Array[OutSchema] = {
+    val (outResults, collectTime) = Utils.measureTimeMillis(out.collect())
+    val outputCount = outResults.length
+    
+    println(lineSep)
+    printWithLimit(outResults, outputPrintLimit, "OUTPUTS", lineSep)
+    
+    println(s"Collect time: $collectTime")
+    println(s"Output count: $outputCount")
+    outResults
+  }
+  
+  def runBaselineTest[OutSchema](out: ProvenanceRDD[OutSchema],
+                             outputPrintLimit: Option[Int] = Some(10),
+                             lineSep: String = "-" * 50
+                            ): Array[(OutSchema, Provenance)] = {
+    val (outResults, collectTime) = Utils.measureTimeMillis(out.collectWithProvenance())
+    val outputCount = outResults.length
+    
+    println(lineSep)
+    printWithLimit(outResults, outputPrintLimit, "OUTPUTS", lineSep)
+    
+    println(s"Collect time: $collectTime")
+    println(s"Output count: $outputCount")
+    outResults
+  }
 }
+
+
 
 /** CallSite represents a place in user code. It can have a short and a long form. */
 case class CallSite(shortForm: String, longForm: String)

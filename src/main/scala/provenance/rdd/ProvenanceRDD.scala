@@ -2,6 +2,7 @@ package provenance.rdd
 
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
+import provenance.data.Provenance
 import symbolicprimitives.SymBase
 
 import scala.reflect.ClassTag
@@ -11,6 +12,8 @@ import scala.util.Random
 /** Trait to ensure consistent base API between Pair and non-Pair */
 trait ProvenanceRDD[T] extends Serializable {
   def map[U: ClassTag](f: T => U, enableUDFAwareProv: Option[Boolean] = None): ProvenanceRDD[U]
+  
+  //def mapPartitions[U: ClassTag](f: Iterator[T] => Iterator[U]): ProvenanceRDD[U]
   
   def flatMap[U:ClassTag](f: T => TraversableOnce[U], enableUDFAwareProv: Option[Boolean] = None): ProvenanceRDD[U]
   

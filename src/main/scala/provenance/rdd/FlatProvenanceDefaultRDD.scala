@@ -1,7 +1,7 @@
 package provenance.rdd
 
 import org.apache.spark.rdd.RDD
-import provenance.data.Provenance
+import provenance.data.{DummyProvenance, Provenance}
 import symbolicprimitives.Utils
 
 import scala.reflect.ClassTag
@@ -17,6 +17,20 @@ class FlatProvenanceDefaultRDD[T: ClassTag](override val rdd: RDD[ProvenanceRow[
       row => Utils.computeOneToOneUDF(f, row, _enableUDFAwareProv)
     })
   }
+  
+//  override def mapPartitions[U: ClassTag](f: Iterator[T] => Iterator[U], enableUDFAwareProv: Option[Boolean] = None): ProvenanceRDD[U] = {
+//    val _enableUDFAwareProv = Utils.getUDFAwareEnabledValue(enableUDFAwareProv)
+//    new FlatProvenanceDefaultRDD(
+//      rdd.mapPartitions(iter => {
+//        val partitionProv = DummyProvenance.create()
+//        iter.map({ case (value, prov) => {
+//
+//        }})
+//      })
+//      rdd.map {
+//      row => Utils.computeOneToOneUDF(f, row, _enableUDFAwareProv)
+//    })
+//  }
 
   override def flatMap[U  : ClassTag](f: T => TraversableOnce[U],
                                       enableUDFAwareProv: Option[Boolean] = None): FlatProvenanceDefaultRDD[U] = {

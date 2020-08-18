@@ -1,6 +1,6 @@
 package examples.benchmarks
 
-import provenance.rdd.{InfluenceTracker, IntStreamingOutlierInfluenceTracker, PairProvenanceRDD, ProvenanceRDD, StreamingOutlierInfluenceTracker, TopNInfluenceTracker}
+import provenance.rdd.{FloatStreamingOutlierInfluenceTracker, InfluenceTracker, IntStreamingOutlierInfluenceTracker, PairProvenanceRDD, ProvenanceRDD, StreamingOutlierInfluenceTracker, TopNInfluenceTracker}
 import ProvenanceRDD._
 import symbolicprimitives.SymImplicits._
 import symbolicprimitives._
@@ -57,7 +57,7 @@ object AggregationFunctions {
     input.aggregateByKey((0.0, 0))(
       {case ((sum, count), next) => (sum + next, count+1)},
       {case ((sum1, count1), (sum2, count2)) => (sum1+sum2,count1+count2)}
-                                                          ).mapValues({case (sum, count) => sum.toDouble/count})
+    ).mapValues({case (sum, count) => sum.toDouble/count})
   }
   
   def averageByKey[K: ClassTag](input: ProvenanceRDD[(K, SymInt)])
@@ -79,11 +79,41 @@ object AggregationFunctions {
                                                           ).mapValues({case (sum, count) => sum.toDouble/count})
   }
   
+  // Hastily added to support float case for weather combo
+  def averageByKey[K: ClassTag](input: ProvenanceRDD[(K, Float)],
+                                enableUDFAwareProv: Option[Boolean],
+                                influenceTrackerCtr: Option[() => InfluenceTracker[Float]])
+                               (implicit a: DummyImplicit,
+                                b: DummyImplicit,
+                                c: DummyImplicit,
+                                d: DummyImplicit) : PairProvenanceRDD[K, Float] = {
+    input.aggregateByKey((0.0f, 0))(
+      {case ((sum, count), next) => (sum + next, count+1)},
+      {case ((sum1, count1), (sum2, count2)) => (sum1+sum2,count1+count2)},
+                                                          enableUDFAwareProv = enableUDFAwareProv,
+                                                          influenceTrackerCtr = influenceTrackerCtr
+                                                          ).mapValues({case (sum, count) => sum
+      .toFloat/count})
+  }
+  
   /** Default IntStreamingOutlier function */
   def averageByKeyWithInfluence[K: ClassTag](input: ProvenanceRDD[(K, Int)],
                                              influenceFn: () => InfluenceTracker[Int] =
                                              ()=> IntStreamingOutlierInfluenceTracker()
                                             ): PairProvenanceRDD[K, Double] = {
+    averageByKey(input,
+                 enableUDFAwareProv = Some(false),
+                 influenceTrackerCtr = Some(influenceFn)
+                 )
+  }
+  
+  /** Default FloatStreamingOutlier function. This has to be named different from the int case
+    * because Scala does not allow multiple overloaded methods with default values. */
+  def averageByKeyWithInfluenceFloat[K: ClassTag](input: ProvenanceRDD[(K, Float)],
+                                             influenceFn: () => InfluenceTracker[Float] =
+                                             ()=> FloatStreamingOutlierInfluenceTracker()
+                                            )(implicit a: DummyImplicit): PairProvenanceRDD[K,
+    Float] = {
     averageByKey(input,
                  enableUDFAwareProv = Some(false),
                  influenceTrackerCtr = Some(influenceFn)

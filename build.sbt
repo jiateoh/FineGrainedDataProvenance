@@ -4,7 +4,6 @@ version := "1.0"
 
 scalaVersion := "2.11.8"
 
-
 // build.sbt
 libraryDependencies += "org.scalameta" %% "scalameta" % "4.2.3"
 
