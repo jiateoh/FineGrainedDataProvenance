@@ -76,11 +76,42 @@ object Utils {
   private def buildSymbolicProvenanceRow[T](in: T, rowProv: Provenance): ProvenanceRow[T] = {
     // Might be worth looking into classtags to see if we can avoid this runtime check altogether
     // and simply define methods beforehand.
+    (in, inferProvenance(in, rowProv))
+  }
+  
+  /** Recursively inspects data types and infers provenance. The defaultProv is a fallback used
+    * if any non-symbolic or unsupported type is observed. */
+  private def inferProvenance[Any](in: Any, defaultProv: Provenance): Provenance = {
     in match {
       case o: SymBase =>
-        (in, o.getProvenance())
+        o.getProvenance()
+      case product: Product =>
+        product.productIterator.map(x => inferProvenance(x, defaultProv))
+                .foldLeft(DummyProvenance.create())(_.merge(_))
+      /*case product2: Product2[_,_] => // includes Tuple
+        product2 match {
+          case (a: SymBase, b: SymBase) =>
+            product2.productIterator.map(x => inferProvenance(x, defaultProv))
+                    .foldLeft(DummyProvenance.create())(_.merge(_))
+          case _ =>
+            // default situation, can't match all symbolic types
+            defaultProv
+        }
+      case product3: Product3[_,_,_] =>
+        product3 match {
+          case (a: SymBase, b: SymBase, c: SymBase) =>
+            //a.getProvenance().merge(b.getProvenance()).merge(c.getProvenance())
+            product3.productIterator.map(x => inferProvenance(x, defaultProv))
+                    .foldLeft(DummyProvenance.create())(_.merge(_))
+        }
+        */
+      case coll: Traversable[_] =>
+        coll.map(x => inferProvenance(x, defaultProv))
+                .foldLeft(DummyProvenance.create())(_.merge(_))
+      //case coll: Traversable[_] =>
+      //  defaultProv
       case _ =>
-        (in, rowProv)
+        defaultProv
     }
   }
   

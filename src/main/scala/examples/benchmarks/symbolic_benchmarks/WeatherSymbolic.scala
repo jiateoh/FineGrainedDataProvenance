@@ -63,14 +63,6 @@ object WeatherSymbolic {
     
     val deltaSnow = AggregationFunctions.minMaxDeltaByKey(split)
 
-    // output test function
-    def testFn(row: (SymString, SymFloat)): Boolean =
-      row._2 > 6000f
-    
-    def faultFn(s: String): Boolean = {
-      val arr = s.split(",")
-      arr(2).trim().equals("90in")
-    }
     Utils.runTraceAndPrintStats(deltaSnow,
                                   (row: (SymString, SymFloat)) => row._2 > 6000f,
                                   input.map(_.value),

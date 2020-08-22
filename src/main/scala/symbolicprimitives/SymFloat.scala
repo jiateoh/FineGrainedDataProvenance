@@ -52,7 +52,14 @@ case class SymFloat(override val value: Float, p:Provenance) extends SymAny(valu
   def /(x: SymFloat): SymFloat = {
     SymFloat(value / x.value, newProvenance(x.getProvenance()))
   }
-
+  
+  // Incomplete comparison operators - see discussion in SymDouble on provenance
+  def >(x: SymFloat): Boolean = {
+    // mergeProvenance(x.getProvenance())
+    return value > x.value
+  }
+  
+  
   /**
     * Operators not Supported Symbolically yet
     **/

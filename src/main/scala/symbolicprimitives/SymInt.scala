@@ -4,13 +4,16 @@ package symbolicprimitives
   * Created by malig on 4/25/19.
   */
 
-import provenance.data.Provenance
+import provenance.data.{DummyProvenance, Provenance}
 
 
 
 case class SymInt(override val value: Int, p : Provenance) extends SymAny(value, p) {
 
-
+  def this(value: Int) = {
+    this(value, DummyProvenance.create())
+  }
+  
   /**
     * Overloading operators from here onwards
     */
@@ -278,4 +281,8 @@ case class SymInt(override val value: Int, p : Provenance) extends SymAny(value,
 
   def %(x: Double): Double = value % x
 
+}
+
+object SymInt {
+  implicit def ordering: Ordering[SymInt] = Ordering.by(_.value)
 }

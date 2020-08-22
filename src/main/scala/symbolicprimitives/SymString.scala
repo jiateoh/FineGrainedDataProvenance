@@ -23,11 +23,15 @@ case class SymString(override val value: String, p: Provenance) extends SymAny(v
           s, getProvenance()))
   }
   def split(regex: String): Array[SymString] = {
+    split(regex, 0)
+  }
+  
+  def split(regex: String, limit: Int): Array[SymString] = {
     value
-      .split(regex)
+      .split(regex, limit)
       .map(s =>
-         SymString(
-          s, getProvenance()))
+             SymString(
+               s, getProvenance()))
   }
    def split(separator: Array[Char]): Array[SymString] = {
 
@@ -52,6 +56,10 @@ case class SymString(override val value: String, p: Provenance) extends SymAny(v
 
   def lastIndexOf(elem: Char): SymInt = {
     SymInt(value.lastIndexOf(elem), getProvenance())
+  }
+  
+  def trim(): SymString = {
+    SymString(value.trim, getProvenance())
   }
 
 

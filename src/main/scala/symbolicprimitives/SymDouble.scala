@@ -1,12 +1,14 @@
 package symbolicprimitives
 
-import provenance.data.Provenance
+import provenance.data.{DummyProvenance, Provenance}
 
 /**
   * Created by malig on 4/25/19.
   */
 case class SymDouble(i: Double, p: Provenance) extends SymAny(i, p) {
-
+  def this(value: Double) = {
+    this(value, DummyProvenance.create())
+  }
   /**
     * Overloading operators from here onwards
     */
@@ -301,4 +303,6 @@ case class SymDouble(i: Double, p: Provenance) extends SymAny(i, p) {
 
 object SymDouble {
   implicit def ordering: Ordering[SymDouble] = Ordering.by(_.value)
+  
+  
 }

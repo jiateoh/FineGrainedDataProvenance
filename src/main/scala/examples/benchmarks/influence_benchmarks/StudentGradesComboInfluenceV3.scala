@@ -1,14 +1,21 @@
 package examples.benchmarks.influence_benchmarks
 
 import org.apache.spark.{Partitioner, SparkConf, SparkContext}
+import provenance.data.DummyProvenance
 import provenance.rdd.{BottomNInfluenceTracker, PairProvenanceDefaultRDD, TopNInfluenceTracker, UnionInfluenceTracker}
 import sparkwrapper.SparkContextWithDP
-import symbolicprimitives.{SymDouble, SymString, Utils}
+import symbolicprimitives.{SymDouble, SymInt, Utils}
+import symbolicprimitives.SymImplicits._
 
 import scala.collection.mutable
 
 
-object StudentGradesComboInfluenceV2 {
+/** Same program as V2 but tainting from the start rather than after the initial aggregation.
+  * Because we have no way to 'disable' the taint tracking, the initial aggregateByKey can become
+  * very expensive.
+  */
+object StudentGradesComboInfluenceV3 {
+  
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
     var logFile = ""
@@ -26,7 +33,7 @@ object StudentGradesComboInfluenceV2 {
     val sc = new SparkContext(conf)
     val scdp = new SparkContextWithDP(sc)
     Utils.setUDFAwareDefaultValue(true)
-    val lines = scdp.textFileProv(logFile)
+    val lines = scdp.textFileSymbolic(logFile)
     
     val deptCourseGrades = lines.map(line => {
       val arr = line.split(",")
@@ -35,8 +42,8 @@ object StudentGradesComboInfluenceV2 {
       ((dept, courseId), grade)
     })
     
-    val deptCourseAvgs = deptCourseGrades.aggregateByKey((0.0, 0))(//, new DepartmentPartitioner
-      // (5))(
+    val deptCourseAvgs = deptCourseGrades.aggregateByKey((new SymDouble(0.0),
+                                                         new SymInt(0)))(
       {case ((sum, count), next) => (sum + next, count+1)},
       {case ((sum1, count1), (sum2, count2)) => (sum1+sum2,count1+count2)},
       // Influence Tracker for grades - default to Int for now
@@ -48,28 +55,16 @@ object StudentGradesComboInfluenceV2 {
                                     // scores
                                     UnionInfluenceTracker(BottomNInfluenceTracker(2),
                                                           TopNInfluenceTracker(2))
-
-                                  //TopNInfluenceTracker(1) // TESTING ONLY
+                                  
+                                    //TopNInfluenceTracker(1) // TESTING ONLY
                                   )
     ).mapValues({case (sum, count) => sum / count})
-    
-    // Convert/add taint
-    val taintedDeptCourseAvgs: PairProvenanceDefaultRDD[(SymString, SymString), SymDouble] =
-    //val taintedDeptCourseAvgs: PairProvenanceDefaultRDD[(String, String), SymDouble] =
-      new PairProvenanceDefaultRDD[(SymString, SymString), SymDouble](
-      //new PairProvenanceDefaultRDD[(String, String), SymDouble](
-        deptCourseAvgs.asInstanceOf[PairProvenanceDefaultRDD[(String, String), Double]].rdd.map(
-          { case ((key1, key2), (value, prov)) =>
-             ((SymString(key1, prov), SymString(key2, prov)),
-              // ((key1, key2),
-              (SymDouble(value, prov), prov))}
-        )
-      )
     
     val lowestLimit = 5
     val highestLimit = 5
     val topBottomDeptAvgs =
-      taintedDeptCourseAvgs
+      //taintedDeptCourseAvgs
+    deptCourseAvgs
         // first get rid of the course key for our next agg
         .map({case ((dept, course), avg) => (dept, avg)})
         // agg and retain the top/bottom 5 values in each dept key group
