@@ -64,7 +64,7 @@ object StudentGradesComboBaseline {
           maxHeap.enqueue(avg)
           while (maxHeap.size > lowestLimit) maxHeap.dequeue()
         }
-        if (minHeap.size < lowestLimit || avg > minHeap.head) {
+        if (minHeap.size < highestLimit || avg > minHeap.head) {
           minHeap.enqueue(avg)
           while (minHeap.size > highestLimit) minHeap.dequeue()
         }
