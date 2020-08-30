@@ -4,7 +4,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.serializer.Serializer
 import org.apache.spark.{HashPartitioner, Partitioner, SparkEnv}
 import provenance.data.InfluenceMarker._
-import provenance.data.{InfluenceMarker, Provenance}
+import provenance.data.{DummyProvenance, InfluenceMarker, Provenance}
 import symbolicprimitives.{SymBase, Utils}
 import java.nio.ByteBuffer
 
@@ -215,14 +215,12 @@ class PairProvenanceDefaultRDD[K, V](override val rdd: RDD[(K, ProvenanceRow[V])
     // shorthands for easier reference
     type ValueRow = ProvenanceRow[V]
     
-    if(_enableUDFAwareProv && classOf[SymBase].isAssignableFrom(ct.runtimeClass)) {
-      // Used to require that udfAware -> output is symbase, but that's too restrictive.
-      //      assert(classOf[SymBase].isAssignableFrom(ct.runtimeClass), "UDF-aware flag should only be used if output " +
-      //        "type is a SymBase, but found " + ct)
-      
+    if(_enableUDFAwareProv) {
+      // implicit assumption that there is some sort of taint available in the data record
       
       // We'll use the combiner's provenance since it's a symbase. No need to propagate row-level
-      // provenance!
+      // provenance! This of course means we also may lose information if the taint objects do
+      // not work as intended, but that is an expectation for this flag being enabled.
       def createProvCombiner(value: ValueRow): C = createCombiner(value._1)
       def mergeProvValue(combiner: C, value: ValueRow): C = mergeValue(combiner, value._1)
       // use default mergeCombiners
@@ -236,16 +234,24 @@ class PairProvenanceDefaultRDD[K, V](override val rdd: RDD[(K, ProvenanceRow[V])
         mapSideCombine,
         resultSerializer
         )
-      // The output will be a symobj, so rely on that to identify provenance
-      val extractedSymBaseProv = combinerResult.mapValues(v => (v, v.asInstanceOf[SymBase].getProvenance()))
+      // The output should contain a symobj, so rely on that to identify provenance
+      // v.asInstanceOf[SymBase].getProvenance()
+      // WARNING - if there is no provenance to infer, this can actually be terribly expensive.
+      val extractedSymBaseProv = combinerResult.mapValues(v => (v, Utils.inferProvenance(v)))
       new PairProvenanceDefaultRDD[K,C](extractedSymBaseProv)
     } else {
       // default is an AllInfluenceTracker, i.e. don't filter anything.
       val _influenceTrackerCtr: () => InfluenceTracker[V] = influenceTrackerCtr.getOrElse(AllInfluenceTracker[V])
       // We should use influence functions. These will be tied along with each combiner to
       // identify what the retained provenance should be.
-      // TODO optimization: since udfAware is false, we should remove/dummy any provenance in the
-      //  Combiner class if it's a SymBase to reduce overheads.
+      // jteoh 8/24/20: If influence functions are used with symbolic data types, we need to
+      // manually zero out the existing provenance and capture it again after...
+      // This involves two steps:
+      // (1): map all data records (both key and value) and *replace* (update?).
+      // (2): after combine by key, when extracting tracker provenance to row-level, also update
+      // the row's data values (searching for symbolic)
+      
+      
       type CombinerWithInfluenceTracker = (C, InfluenceTracker[V])
       def createProvCombiner(value: ValueRow): CombinerWithInfluenceTracker = {
         val tracker = _influenceTrackerCtr() // needed for compile for unknown reasons...
@@ -259,8 +265,16 @@ class PairProvenanceDefaultRDD[K, V](override val rdd: RDD[(K, ProvenanceRow[V])
         (mergeCombiners(c1._1, c2._1), c1._2.mergeTracker(c2._2))
       }
   
+      // Step 1 of managing taints in influence functions
+      val baseRdd = rdd.map(row => {
+        // minor simplification: we'll apply on the whole row including the row provenance
+        // itself, which should be ignored by this function since it only targets symbolic taint
+        // objects.
+        // TODO is it necessary to 'zero out' the provenance for the keys? or just the values?
+        Utils.replaceSymProvenance(row, DummyProvenance.create())
+      })
       val combinerResult: RDD[(K, CombinerWithInfluenceTracker)] =
-        rdd.combineByKeyWithClassTag[CombinerWithInfluenceTracker](
+        baseRdd.combineByKeyWithClassTag[CombinerWithInfluenceTracker](
           createProvCombiner _,
           mergeProvValue _,
           mergeProvCombiners _,
@@ -268,9 +282,26 @@ class PairProvenanceDefaultRDD[K, V](override val rdd: RDD[(K, ProvenanceRow[V])
           mapSideCombine,
           resultSerializer
         )
-      val combinerRowResults: RDD[(K, ProvenanceRow[C])] = combinerResult.mapValues(
-        {case (combiner, tracker) => (combiner, tracker.computeProvenance())})
+      // Step 2 of managing taints in influence functions: adopt the tracker provenance into any
+      // symbolic values present.
+      //val combinerRowResults: RDD[(K, ProvenanceRow[C])] = combinerResult.mapValues(
+      //  {case (combiner, tracker) => (combiner, tracker.computeProvenance())})
+      val combinerRowResults: RDD[(K, ProvenanceRow[C])] = combinerResult.map(
+        {case (key, (combiner, tracker)) =>
+          val trackerProv = tracker.computeProvenance()
+          val newKey = Utils.replaceSymProvenance(key, trackerProv)
+          val newCombiner = Utils.replaceSymProvenance(combiner, trackerProv)
+          (newKey, (newCombiner, trackerProv))
+        })
+//      println("DEBUGGING")
+//      val test = rdd.take(1)
+//      val testResult = Utils.replaceSymProvenance(test, DummyProvenance.create())
+//      rdd.take(1).foreach(println)
+//      baseRdd.take(1).foreach(println)
+      
+      
       new PairProvenanceDefaultRDD[K,C](combinerRowResults)
+      
     }
   }
   

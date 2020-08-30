@@ -73,7 +73,7 @@ object Utils {
 
   /** Utility method to extract symbolic provenance from object to construct provenance row, if
     * applicable. This method should not be used if udfAware is disabled! */
-  private def buildSymbolicProvenanceRow[T](in: T, rowProv: Provenance): ProvenanceRow[T] = {
+  def buildSymbolicProvenanceRow[T](in: T, rowProv: Provenance = DummyProvenance.create()): ProvenanceRow[T] = {
     // Might be worth looking into classtags to see if we can avoid this runtime check altogether
     // and simply define methods beforehand.
     (in, inferProvenance(in, rowProv))
@@ -81,7 +81,7 @@ object Utils {
   
   /** Recursively inspects data types and infers provenance. The defaultProv is a fallback used
     * if any non-symbolic or unsupported type is observed. */
-  private def inferProvenance[Any](in: Any, defaultProv: Provenance): Provenance = {
+  def inferProvenance[Any](in: Any, defaultProv: Provenance = DummyProvenance.create()): Provenance = {
     in match {
       case o: SymBase =>
         o.getProvenance()
@@ -112,6 +112,42 @@ object Utils {
       //  defaultProv
       case _ =>
         defaultProv
+    }
+  }
+  
+  /** Use provided function to replace existing provenance with new provenance, recursively.
+    * Return the original input object, after updating symbolic provenance.
+    */
+  def replaceSymProvenance[T](in: T, replaceFn: Provenance => Provenance): T = {
+    in match {
+      case o: SymBase =>
+        o.setProvenance(replaceFn(o.getProvenance()))
+      case product: Product =>
+        product.productIterator.foreach(x => replaceSymProvenance(x, replaceFn))
+      case coll: Traversable[_] =>
+        coll.foreach(x => replaceSymProvenance(x, replaceFn))
+      case _ =>
+        // do nothing
+    }
+    in
+  }
+  
+  def replaceSymProvenance[T](in: T, replacement: Provenance): T =
+    replaceSymProvenance(in, _ => replacement)
+  
+  def simplifySyms[T](in: T): String = {
+    in match {
+      case o: SymAny[_] =>
+        o.value.toString
+      case product: Product =>
+        // toSeq since we can't reuse the iterator
+        val temp = product.productIterator.map(simplifySyms).filter(_.nonEmpty).toSeq
+        if(temp.size > 1) temp.mkString("(",",",")") else temp.mkString // no start/end
+      case coll: Traversable[_] =>
+        val temp = coll.map(simplifySyms).filter(_.nonEmpty).toSeq
+        if(temp.size > 1) temp.mkString("[",",","]") else temp.mkString // no start/end
+      case other =>
+        other.toString
     }
   }
   
@@ -427,6 +463,23 @@ object Utils {
                                        tracePrintLimit: Option[Int] = Some(10),
                                        diffsPrintLimit: Option[Int] = Some(10),
                                        lineSep: String = "-" * 50
+                                      ): Array[String] = {
+    // standard extractor, i.e. for non-symbolic cases.
+    val outputProvenanceExtractor: ProvenanceRow[OutSchema] => Provenance = _._2
+    runTraceAndPrintStatsWithProvExtractor(out, outputTestFn, outputProvenanceExtractor, inputs, inputFaultFn, outputPrintLimit,
+                          debugPrintLimit, tracePrintLimit, diffsPrintLimit, lineSep)
+  }
+  
+  def runTraceAndPrintStatsWithProvExtractor[OutSchema](out: ProvenanceRDD[OutSchema],
+                                       outputTestFn: OutSchema => Boolean,
+                                       outputProvExtractor: ProvenanceRow[OutSchema] => Provenance,
+                                       inputs: ProvenanceRDD[String],
+                                       inputFaultFn: String => Boolean,
+                                       outputPrintLimit: Option[Int] = Some(10),
+                                       debugPrintLimit: Option[Int] = Some(10),
+                                       tracePrintLimit: Option[Int] = Some(10),
+                                       diffsPrintLimit: Option[Int] = Some(10),
+                                       lineSep: String = "-" * 50
                                     ): Array[String] = {
     
     
@@ -505,6 +558,9 @@ object Utils {
     
     println(lineSep)
     printWithLimit(outResults, outputPrintLimit, "OUTPUTS", lineSep)
+    printWithLimit(outResults.map(simplifySyms), outputPrintLimit,
+                   "OUTPUTS (Provenance removed)", lineSep)
+    
     
     println(s"Collect time: $collectTime")
     println(s"Output count: $outputCount")

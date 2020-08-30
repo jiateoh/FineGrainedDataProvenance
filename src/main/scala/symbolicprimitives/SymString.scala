@@ -74,6 +74,7 @@ case class SymString(override val value: String, p: Provenance) extends SymAny(v
     SymDouble(value.toDouble , getProvenance())
   }
 
+  // TODO: add configuration to track equality checks, e.g. if used as a key in a map.
   def equals(obj: SymString): Boolean = value.equals(obj.value)
   def eq(obj: SymString): Boolean = value.eq(obj.value)
 
