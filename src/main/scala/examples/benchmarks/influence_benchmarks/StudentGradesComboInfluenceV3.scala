@@ -1,10 +1,11 @@
 package examples.benchmarks.influence_benchmarks
 
+import examples.benchmarks.generators.StudentGradesDataGeneratorCombo
 import org.apache.spark.{Partitioner, SparkConf, SparkContext}
-import provenance.data.DummyProvenance
-import provenance.rdd.{BottomNInfluenceTracker, PairProvenanceDefaultRDD, TopNInfluenceTracker, UnionInfluenceTracker}
+import provenance.data.{DummyProvenance, Provenance}
+import provenance.rdd.{BottomNInfluenceTracker, PairProvenanceDefaultRDD, ProvenanceRow, TopNInfluenceTracker, UnionInfluenceTracker}
 import sparkwrapper.SparkContextWithDP
-import symbolicprimitives.{SymDouble, SymInt, Utils}
+import symbolicprimitives.{SymDouble, SymInt, SymString, Utils}
 import symbolicprimitives.SymImplicits._
 
 import scala.collection.mutable
@@ -31,6 +32,7 @@ object StudentGradesComboInfluenceV3 {
     } //set up spark context
     
     val sc = new SparkContext(conf)
+    sc.setLogLevel("ERROR")
     val scdp = new SparkContextWithDP(sc)
     Utils.setUDFAwareDefaultValue(true)
     val lines = scdp.textFileSymbolic(logFile)
@@ -62,6 +64,37 @@ object StudentGradesComboInfluenceV3 {
     
     val lowestLimit = 5
     val highestLimit = 5
+    
+    val debug =
+      deptCourseAvgs
+        // first get rid of the course key for our next agg
+        .map({case ((dept, course), avg) => (dept, avg)})
+        // agg and retain the top/bottom 5 values in each dept key group
+        .aggregateByKey(
+          //(new mutable.PriorityQueue[Double](),
+          // new mutable.PriorityQueue[Double]()(Ordering.Double.reverse)))(
+          (new mutable.PriorityQueue[SymDouble](),
+            new mutable.PriorityQueue[SymDouble]()(SymDouble.ordering.reverse)))(
+          {case ((maxHeap, minHeap), avg) => {
+            if (maxHeap.size < lowestLimit || avg < maxHeap.head) {
+              maxHeap.enqueue(avg)
+              while (maxHeap.size > lowestLimit) maxHeap.dequeue()
+            }
+            if (minHeap.size < highestLimit || avg > minHeap.head) {
+              minHeap.enqueue(avg)
+              while (minHeap.size > highestLimit) minHeap.dequeue()
+            }
+            (maxHeap, minHeap)
+          }},
+          {case ((maxHeapA, minHeapA), (maxHeapB, minHeapB)) => {
+            maxHeapA ++= maxHeapB
+            while (maxHeapA.size > lowestLimit) maxHeapA.dequeue()
+            minHeapA ++= minHeapB
+            while (minHeapA.size > lowestLimit) minHeapA.dequeue()
+            (maxHeapA, minHeapA)
+          }}
+            )
+    
     val topBottomDeptAvgs =
       //taintedDeptCourseAvgs
     deptCourseAvgs
@@ -78,7 +111,6 @@ object StudentGradesComboInfluenceV3 {
                   maxHeap.enqueue(avg)
                   while (maxHeap.size > lowestLimit) maxHeap.dequeue()
                 }
-                // TODO fix the baseline (lowestLimit used below)
                 if (minHeap.size < highestLimit || avg > minHeap.head) {
                   minHeap.enqueue(avg)
                   while (minHeap.size > highestLimit) minHeap.dequeue()
@@ -106,8 +138,38 @@ object StudentGradesComboInfluenceV3 {
         }})
     
     val out = topBottomDeptAvgs
-    Utils.runBaselineTest(out)
+    //Utils.runBaselineTest(deptCourseAvgs) // seems OK, contains 4 values per tainted object
+    // (expected from IF)
+    // Utils.runBaselineTest(debug) // DEBUGGING - has abnormally high amount of prov. Leads me to
+    // think it's triggering the same taint prov rewrite branch somehow...
+    // I think it's working now, but need to sleep. I believe I updated the code to support
+    // arbitrary collections, though it results in an expensive runtime data type matching.
+    // Do we need to rerun evals?
     
+    //val results = Utils.runBaselineTest(out)
+    type OutSchema = (SymString, (SymDouble, SymDouble))
+    Utils.runTraceAndPrintStatsWithProvExtractor(
+      out,
+      (record: OutSchema) => {
+        record._2._1 < 80 || record._2._2 > 85 },
+                       (row: ProvenanceRow[OutSchema]) => {
+        var prov: Provenance = DummyProvenance.create()
+        // ignoring row provenance in favor of symbolic objects
+        val (bottom5, top5) = row._1._2
+        if(bottom5 < 80) prov = prov.merge(bottom5.getProvenance())
+        if(top5 > 85) prov = prov.merge(top5.getProvenance())
+        prov
+      },
+      // workaround for testing/debugging: Use base strings rather than
+      // symbolic ones for API conformity
+      lines.map(_.value),
+      StudentGradesDataGeneratorCombo.isFault
+    )
+   
+         
+    
+    //    Utils.runTraceAndPrintStats(out)
+    //out.rdd.saveAsTextFile("/tmp/comboInfluenceV3_result")
 //    val elapsed = Utils.measureTimeMillis({
 //      val outCollect = out.collectWithProvenance()
 //      println("Department, (Mean, Variance)")
