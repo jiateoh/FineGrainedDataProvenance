@@ -5,7 +5,7 @@ import symbolicprimitives.SymImplicits.SymLong
 
 abstract class SymAny[T <: Any](val value: T, p: Provenance) extends SymBase(p) {
   def toSymString: SymString = {
-    SymString(value.toString, p)
+    SymString(value.toString, getProvenance())
   }
   
   override def hashCode(): Int = value.hashCode()
@@ -16,7 +16,7 @@ abstract class SymAny[T <: Any](val value: T, p: Provenance) extends SymBase(p) 
       case _ => value.equals(obj)
     }
   
-  override def toString: String = s"${this.getClass.getSimpleName}($value, $p)"
+  override def toString: String = s"${this.getClass.getSimpleName}($value, ${getProvenance()})"
   
   
   // jteoh Disabled: These could actually be implicits in the symbase class too, but I'm hesitant

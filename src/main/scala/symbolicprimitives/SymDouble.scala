@@ -86,8 +86,6 @@ case class SymDouble(i: Double, p: Provenance) extends SymAny(i, p) {
     value > x
   }
 
-  override def toString: String =
-    value.toString + s""" (Most Influential Input Offset: ${getProvenance()})"""
   /**
     * Not Supported Symbolically yet
     **/
