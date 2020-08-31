@@ -24,7 +24,7 @@ object StudentGradesComboInfluenceV3 {
   
     if (args.length < 2) {
       conf.setMaster("local[*]")
-      conf.setAppName("Student GradesV2").set("spark.executor.memory", "2g")
+      conf.setAppName("Student Grades Combo Influence V3").set("spark.executor.memory", "2g")
       logFile = "datasets/studentGradesCombo"
     } else {
       logFile = args(0)
@@ -53,47 +53,19 @@ object StudentGradesComboInfluenceV3 {
        enableUDFAwareProv = Some(false),
        influenceTrackerCtr = Some(() =>
                                     //IntStreamingOutlierInfluenceTracker()
-                                    // Below: this is basically a range for the best and worst 2
+                                    // Below: this is basically a range for the best and worst n
                                     // scores
-                                    UnionInfluenceTracker(BottomNInfluenceTracker(2),
-                                                          TopNInfluenceTracker(2))
+                                    { val n = 1
+                                      UnionInfluenceTracker(BottomNInfluenceTracker(n),
+                                                            TopNInfluenceTracker(n))
+                                    }
                                   
                                     //TopNInfluenceTracker(1) // TESTING ONLY
                                   )
     ).mapValues({case (sum, count) => sum / count})
     
-    val lowestLimit = 5
-    val highestLimit = 5
-    
-    val debug =
-      deptCourseAvgs
-        // first get rid of the course key for our next agg
-        .map({case ((dept, course), avg) => (dept, avg)})
-        // agg and retain the top/bottom 5 values in each dept key group
-        .aggregateByKey(
-          //(new mutable.PriorityQueue[Double](),
-          // new mutable.PriorityQueue[Double]()(Ordering.Double.reverse)))(
-          (new mutable.PriorityQueue[SymDouble](),
-            new mutable.PriorityQueue[SymDouble]()(SymDouble.ordering.reverse)))(
-          {case ((maxHeap, minHeap), avg) => {
-            if (maxHeap.size < lowestLimit || avg < maxHeap.head) {
-              maxHeap.enqueue(avg)
-              while (maxHeap.size > lowestLimit) maxHeap.dequeue()
-            }
-            if (minHeap.size < highestLimit || avg > minHeap.head) {
-              minHeap.enqueue(avg)
-              while (minHeap.size > highestLimit) minHeap.dequeue()
-            }
-            (maxHeap, minHeap)
-          }},
-          {case ((maxHeapA, minHeapA), (maxHeapB, minHeapB)) => {
-            maxHeapA ++= maxHeapB
-            while (maxHeapA.size > lowestLimit) maxHeapA.dequeue()
-            minHeapA ++= minHeapB
-            while (minHeapA.size > lowestLimit) minHeapA.dequeue()
-            (maxHeapA, minHeapA)
-          }}
-            )
+    val lowestLimit = 3
+    val highestLimit = 3
     
     val topBottomDeptAvgs =
       //taintedDeptCourseAvgs
