@@ -512,6 +512,8 @@ object Utils {
     
     println(lineSep)
     printWithLimit(outResults, outputPrintLimit, "OUTPUTS", lineSep)
+    printWithLimit(outResults.map(Utils.simplifySyms), outputPrintLimit,
+                   "OUTPUTS (simplified)", lineSep)
     printWithLimit(debugTargets, debugPrintLimit, "DEBUG TARGETS", lineSep)
     printWithLimit(traceResults, tracePrintLimit, "TRACE RESULTS", lineSep)
     printWithLimit(missingFaults, diffsPrintLimit, "UNTRACED FAULTS", lineSep)

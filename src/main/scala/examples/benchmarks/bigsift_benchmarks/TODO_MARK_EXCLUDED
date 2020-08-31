@@ -1,1 +1,5 @@
 Mark this directory as excluded or otherwise comment out these files.
+To use them, remove spark from the build.sbt (comment it out, along with anything else that may
+depend on spark core)
+Then be sure you've added the bigsift spark jar in the module dependencies somehow.
+(Add it as a library, then under modules -> add library)
