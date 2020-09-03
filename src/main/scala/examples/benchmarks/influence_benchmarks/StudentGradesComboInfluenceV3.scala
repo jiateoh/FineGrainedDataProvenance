@@ -25,7 +25,7 @@ object StudentGradesComboInfluenceV3 {
     if (args.length < 2) {
       conf.setMaster("local[*]")
       conf.setAppName("Student Grades Combo Influence V3").set("spark.executor.memory", "2g")
-      logFile = "datasets/studentGradesComboSmall"
+      logFile = "datasets/studentGradesCombo"
     } else {
       logFile = args(0)
       //local = args(1).toInt

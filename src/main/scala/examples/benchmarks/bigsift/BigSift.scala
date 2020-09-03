@@ -370,10 +370,23 @@ def runWithBigSift[T](f : (RDD[String] , Lineage[String]) => RDD[T] , test : Opt
   //println(linRdd.goBack().count())
   var map1 = mutable.Map[Int, (RDD[Any] , Long)]()
   linRdd = linRdd.goBackAll(map = map1)
+  //linRdd.goBackAll()
   //println(">>>>>>>" + map1)
- // for((k,v) <- map1){
-  //  println(">>>>>>>" + k + "  " + v._1.count() + "  -> " + v._2)
- // }
+//  for((k,v) <- map1){
+//    println(">>>>>>>" + k + "  " + v._1.count() + "  -> " + v._2)
+//  }
+  // jteoh: debugging, I think unknown might be counts based on:
+  // https://github.com/maligulzar/bigdebug/blob/bigsift-demo/core/src/main/scala/org/apache/spark/lineage/rdd/LineageRDD.scala
+  // and key should be the id
+  val mapCounts = map1.map({case (key, (rdd, unknown)) =>
+    (key, rdd, rdd.count(), unknown)
+  }).toSeq // for materialization
+  println("Map counts?")
+  mapCounts.foreach({
+    case (key, rdd, rddCount, unknown) =>
+      println(">>>>>>>" + key + "  " + rddCount + "  -> " + unknown + "(" + rdd + ")")
+  })
+  
   bus.setDAGInfoMap(map1)
 
   val mappedRDD = linRdd.show(false).toRDD

@@ -19,7 +19,7 @@ object StudentGradesComboV3 {
     if (args.length < 2) {
       sparkConf.setMaster("local[*]")
       sparkConf.setAppName("Student Grades Combo BigSift V3").set("spark.executor.memory", "2g")
-      logFile = "datasets/studentGradesComboSmall"
+      logFile = "datasets/studentGradesCombo"
     } else {
       logFile = args(0)
       local = args(1).toInt

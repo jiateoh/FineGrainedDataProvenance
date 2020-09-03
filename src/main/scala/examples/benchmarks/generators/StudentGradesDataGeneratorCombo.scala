@@ -16,7 +16,7 @@ object StudentGradesDataGeneratorCombo {
   
   var logFile = ""
   var partitions = 10
-  var dataper  = 5000000/4 // 500000 before // jteoh 8/31 shrinking further for bigsift/titian
+  var dataper  = 5000000 // 500000 before // jteoh 8/31 shrinking further for bigsift/titian
   val depts = Seq("EE", "CS", "MATH", "Physics ", "STATS")
   val courseNums = Seq(0,100).flatMap(x => (1 to 99).map(_ + x)) //(basically 1 -> 199)
   val faultTargetCourses = Seq("CS9", "CS11")//, "CS14", "CS17") // (note: there are 5 dept x
@@ -98,7 +98,7 @@ object StudentGradesDataGeneratorCombo {
     if(args.length < 2) {
       sparkConf.setMaster("local[6]")
       sparkConf.setAppName("StudentGradesGenerator").set("spark.executor.memory", "2g")
-      logFile =  "datasets/studentGradesComboSmall"
+      logFile =  "datasets/studentGradesCombo"
     }else{
       logFile = args(0)
       partitions =args(1).toInt
