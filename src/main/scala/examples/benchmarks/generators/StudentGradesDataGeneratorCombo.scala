@@ -39,23 +39,21 @@ object StudentGradesDataGeneratorCombo {
     ""
   }
   
-  // Add a special class (outside typical range) with 45 records, one of which is a large typo
-  // that skews the average above 100
   def addExtraFaults(sc: SparkContext, random: Random): RDD[String] = {
     // add an extra, small course with *mostly* OK values, but one abnormally high typo
     // rough math: (899 + (44 * 82.5)) / 45 yields a ~100.6 average, very high and enough to skew
     // the top/bottomN values
-    val singleFaultClass = (1 to 45).map(x => {
-      val studentId = random.nextInt(190) + 10
-      val course = "CS301"
-      val grade = if(x == 7) {
-        899 // a 'typo' where last digit is repeated
-      } else {
-        random.nextInt(15) + 75
-      }
-      s"$studentId,$course,$grade"
-    })
-    val singleFaultClassRDD = sc.parallelize(singleFaultClass)
+//    val singleFaultClass = (1 to 45).map(x => {
+//      val studentId = random.nextInt(190) + 10
+//      val course = "CS301"
+//      val grade = if(x == 7) {
+//        899 // a 'typo' where last digit is repeated
+//      } else {
+//        random.nextInt(15) + 75
+//      }
+//      s"$studentId,$course,$grade"
+//    })
+//    val singleFaultClassRDD = sc.parallelize(singleFaultClass)
     
     // For two additional classes, create an abnormally low average by zeroing out some scores.
     // the number of zeroes should be higher than the influence function capacity used to track
@@ -76,7 +74,8 @@ object StudentGradesDataGeneratorCombo {
     })
     val lowAvgClassesRDD = sc.parallelize(lowAvgClasses)
     
-    val faults = singleFaultClassRDD.union(lowAvgClassesRDD)
+    //val faults = singleFaultClassRDD.union(lowAvgClassesRDD)
+    val faults = lowAvgClassesRDD
     faults
   }
   
@@ -84,7 +83,7 @@ object StudentGradesDataGeneratorCombo {
     val split = str.split(",")
     val course = split(1)
     val grade = split(2)
-    (course == "CS301" && grade == "899") ||
+//    (course == "CS301" && grade == "899") ||
       ((course == "Physics 401" || course == "Physics 402") && grade == "0")
   }
   

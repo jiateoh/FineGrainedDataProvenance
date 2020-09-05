@@ -489,7 +489,7 @@ object Utils {
     val outputCount = outResults.length
   
     val debugTargetCount = debugTargets.length
-    val combinedProvenance = debugTargets.map(_._2).foldLeft(DummyProvenance.create())({
+    val combinedProvenance = debugTargets.map(outputProvExtractor).foldLeft(DummyProvenance.create())({
       case (prov, other) => prov.merge(other)
     })
     

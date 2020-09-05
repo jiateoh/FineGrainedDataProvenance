@@ -37,8 +37,8 @@ object StudentGradesComboBaselineV3 {
       { case ((sum1, count1), (sum2, count2)) => (sum1 + sum2, count1 + count2) }
     ).mapValues({ case (sum, count) => sum / count })
     
-    val lowestLimit = 3
-    val highestLimit = 3
+    val lowestLimit = 5
+    val highestLimit = 5
     
     val topBottomDeptAvgs =
     //taintedDeptCourseAvgs

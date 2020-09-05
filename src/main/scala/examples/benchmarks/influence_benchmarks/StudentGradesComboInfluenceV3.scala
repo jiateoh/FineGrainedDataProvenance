@@ -55,7 +55,7 @@ object StudentGradesComboInfluenceV3 {
                                     //IntStreamingOutlierInfluenceTracker()
                                     // Below: this is basically a range for the best and worst n
                                     // scores
-                                    { val n = 1
+                                    { val n = 2
                                       UnionInfluenceTracker(BottomNInfluenceTracker(n),
                                                             TopNInfluenceTracker(n))
                                     }
@@ -64,8 +64,8 @@ object StudentGradesComboInfluenceV3 {
                                   )
     ).mapValues({case (sum, count) => sum / count})
     
-    val lowestLimit = 3
-    val highestLimit = 3
+    val lowestLimit = 5
+    val highestLimit = 5
     
     val topBottomDeptAvgs =
       //taintedDeptCourseAvgs
@@ -135,7 +135,8 @@ object StudentGradesComboInfluenceV3 {
       // workaround for testing/debugging: Use base strings rather than
       // symbolic ones for API conformity
       lines.map(_.value),
-      StudentGradesDataGeneratorCombo.isFault
+      StudentGradesDataGeneratorCombo.isFault,
+      tracePrintLimit = Some(20)
     )
    
          
